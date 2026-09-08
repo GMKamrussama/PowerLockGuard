@@ -129,19 +129,6 @@ Uses the built-in Windows C# compiler (`csc.exe`) to compile `PowerLockGuard.exe
 ```cmd
 msbuild PowerLockGuard.csproj /p:Configuration=Release
 ```
-
----
-
-## 🏷️ GitHub Repository SEO & Discoverability Setup
-
-When configuring your GitHub repository settings (`https://github.com/<org>/PowerLockGuard`), use these optimized values for maximum search visibility across GitHub, Google, and Bing:
-
-| Setting | Recommended Value |
-|:---|:---|
-| **Repository Description** | `⚡ Smart auto-sleep & power management for developers, laptops & AI agents (Claude Code, Cursor, Aider, VS Code). Automatically sleeps or shuts down when coding tasks finish, plus instant deep sleep on charger unplug. Lightweight (~62 KB) & offline. Built by GMK Solution.` |
-| **Website** | `https://gmksolution.com` |
-| **Topics / Tags** *(Copy-paste into Topics)* | `ai-agents`, `claude-code`, `cursor-ai`, `developer-tools`, `auto-sleep`, `auto-shutdown`, `power-management`, `battery-saver`, `sleep-timer`, `windows-utility`, `gmk-solution`, `csharp`, `winforms`, `deep-sleep`, `laptop`, `standby`, `dev-tools`, `offline-first`, `productivity`, `workstation` |
-
 ---
 
 
