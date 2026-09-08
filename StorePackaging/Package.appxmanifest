@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
+
+  <Identity
+    Name="PowerLockGuard.DeveloperTools"
+    Publisher="CN=YourPublisherName"
+    Version="2.0.0.0"
+    ProcessorArchitecture="neutral" />
+
+  <Properties>
+    <DisplayName>PowerLockGuard</DisplayName>
+    <PublisherDisplayName>PowerLockGuard Contributors</PublisherDisplayName>
+    <Logo>app.ico</Logo>
+    <Description>Auto Sleep and Shutdown Guard for Developers, AI Agents and Laptops.</Description>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22621.0" />
+  </Dependencies>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+
+  <Applications>
+    <Application
+      Id="PowerLockGuard"
+      Executable="PowerLockGuard.exe"
+      EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="PowerLockGuard"
+        Description="AI Agent &amp; Dev Work Watchdog + Instant Charger Unplug Guard"
+        BackgroundColor="#0F172A"
+        Square150x150Logo="app.ico"
+        Square44x44Logo="app.ico">
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+</Package>

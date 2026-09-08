@@ -1,0 +1,13 @@
+## Visual Studio & .NET ignores
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.dll
+*.pdb
+
+# Keep compiled release exe or ignore as preferred in open-source
+# PowerLockGuard.exe is kept if distributing standalone releases
