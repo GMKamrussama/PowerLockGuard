@@ -19,7 +19,7 @@ namespace PowerLockGuard
         private static extern bool SetProcessDPIAware();
 
         [STAThread]
-        public static void Main()
+        public static void Main(string[] args)
         {
             try
             {
@@ -29,6 +29,17 @@ namespace PowerLockGuard
                 }
             }
             catch { }
+
+            if (args != null && args.Length > 0 && args[0] == "--capture-screenshots")
+            {
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                MainForm captureForm = new MainForm();
+                captureForm.Show();
+                captureForm.ExportScreenshots();
+                captureForm.Close();
+                return;
+            }
 
             bool createdNew;
             singleInstanceMutex = new System.Threading.Mutex(true, "Global\\PowerLockGuard_SingleInstanceMutex", out createdNew);
@@ -1454,6 +1465,173 @@ namespace PowerLockGuard
                     string tempVbs = Path.Combine(Path.GetTempPath(), "create_shortcut.vbs");
                     File.WriteAllText(tempVbs, vbs);
                     Process.Start("wscript.exe", "\"" + tempVbs + "\"");
+                }
+            }
+            catch { }
+        }
+
+        public void ExportScreenshots()
+        {
+            try
+            {
+                string root = AppDomain.CurrentDomain.BaseDirectory;
+                string docDir = Path.Combine(root, @"docs\screenshots");
+                string storeDir = Path.Combine(root, @"StorePackaging\assets");
+                Directory.CreateDirectory(docDir);
+                Directory.CreateDirectory(storeDir);
+
+                // 1. Tab 1: Charger Guard
+                SwitchTab(0);
+                Application.DoEvents();
+                string pathCharger = Path.Combine(docDir, "02_charger_guard.png");
+                CaptureForm(this, pathCharger);
+
+                // 2. Tab 2: Work Watchdog
+                SwitchTab(1);
+                lblWatchdogActivity.Text = "🟢 WORKING: 4 tasks (cursor, node, python, claude)";
+                lblWatchdogActivity.ForeColor = Color.FromArgb(5, 150, 105);
+                lblWatchdogCpu.Text = "CPU: 14.8%";
+                prgActivity.Value = 15;
+                lblWatchdogTimer.Text = "Active task execution detected. Watchdog is monitoring work progress.";
+                Application.DoEvents();
+                string pathWatchdog = Path.Combine(docDir, "01_work_watchdog.png");
+                CaptureForm(this, pathWatchdog);
+
+                // 3. Tab 3: Settings & Logs
+                SwitchTab(2);
+                lstActivityLog.Items.Clear();
+                lstActivityLog.Items.Add("[23:45:10] PowerLockGuard v2.0 initialized.");
+                lstActivityLog.Items.Add("[23:45:12] Charger Guard ACTIVE: Unplug triggers instant Deep Sleep.");
+                lstActivityLog.Items.Add("[23:55:00] Work Watchdog ACTIVE: Monitoring AI Agents & IDE tasks.");
+                lstActivityLog.Items.Add("[00:15:30] Claude Code & Cursor build started (CPU: 28%).");
+                lstActivityLog.Items.Add("[00:42:15] All monitored tasks completed work.");
+                lstActivityLog.Items.Add("[00:45:15] Inactivity grace period (3m) reached. Safety countdown triggered.");
+                lstActivityLog.Items.Add("[00:45:45] Auto-Sleep executed safely. Sweet dreams!");
+                Application.DoEvents();
+                string pathSettings = Path.Combine(docDir, "03_settings_history.png");
+                CaptureForm(this, pathSettings);
+
+                // 4. Safety Countdown Dialog
+                SafetyCountdownForm dlg = new SafetyCountdownForm("Sleep", 24, false);
+                dlg.Show();
+                Application.DoEvents();
+                string pathCountdown = Path.Combine(docDir, "04_safety_countdown.png");
+                CaptureForm(dlg, pathCountdown);
+                dlg.Close();
+
+                // 5. Generate Microsoft Store 1920x1080 Showcases
+                CreateStoreAsset(pathWatchdog, Path.Combine(storeDir, "store_screenshot_1_watchdog.png"),
+                    "Auto-Sleep When AI Agents & IDE Tasks Finish",
+                    "Monitors Claude Code, Cursor, Aider, Copilot, Python, & Build scripts. Auto-sleeps when idle.",
+                    "AI WATCHDOG");
+
+                CreateStoreAsset(pathCharger, Path.Combine(storeDir, "store_screenshot_2_charger.png"),
+                    "Instant Deep Sleep on Charger Disconnection",
+                    "Unplugging charger triggers instantaneous Deep Sleep (S3 Standby). Zero battery drain.",
+                    "CHARGER GUARD");
+
+                CreateStoreAsset(pathCountdown, Path.Combine(storeDir, "store_screenshot_3_countdown.png"),
+                    "30-Second Warning Alert & Chime Before Action",
+                    "Clear notification with chime before sleep or shutdown. Tap Cancel or Esc anytime.",
+                    "SAFETY DIALOG");
+
+                CreateStoreAsset(pathSettings, Path.Combine(storeDir, "store_screenshot_4_settings.png"),
+                    "Comprehensive Activity History & Preferences",
+                    "Windows auto-start, configurable countdown, sound alerts, and real-time event logs.",
+                    "SETTINGS & LOGS");
+            }
+            catch { }
+        }
+
+        private static void CaptureForm(Form form, string outputPath)
+        {
+            try
+            {
+                using (Bitmap bmp = new Bitmap(form.Width, form.Height))
+                {
+                    form.DrawToBitmap(bmp, new Rectangle(0, 0, form.Width, form.Height));
+                    bmp.Save(outputPath, System.Drawing.Imaging.ImageFormat.Png);
+                }
+            }
+            catch { }
+        }
+
+        private static void CreateStoreAsset(string srcImgPath, string outputPath, string headline, string subheadline, string tag)
+        {
+            try
+            {
+                int w = 1920;
+                int h = 1080;
+                using (Bitmap canvas = new Bitmap(w, h))
+                using (Graphics g = Graphics.FromImage(canvas))
+                {
+                    g.SmoothingMode = SmoothingMode.AntiAlias;
+                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                    // Dark background gradient
+                    using (LinearGradientBrush bg = new LinearGradientBrush(new Rectangle(0, 0, w, h),
+                        Color.FromArgb(11, 15, 25), Color.FromArgb(15, 23, 42), 45f))
+                    {
+                        g.FillRectangle(bg, 0, 0, w, h);
+                    }
+
+                    // Ambient glow
+                    using (GraphicsPath glow = new GraphicsPath())
+                    {
+                        glow.AddEllipse(250, 80, 1420, 920);
+                        using (PathGradientBrush pgb = new PathGradientBrush(glow))
+                        {
+                            pgb.CenterColor = Color.FromArgb(28, 16, 185, 129);
+                            pgb.SurroundColors = new Color[] { Color.FromArgb(0, 11, 15, 25) };
+                            g.FillPath(pgb, glow);
+                        }
+                    }
+
+                    // Text & Badges
+                    using (Font fontBrand = new Font("Segoe UI", 22f, FontStyle.Bold))
+                    using (Font fontBadge = new Font("Segoe UI", 11f, FontStyle.Bold))
+                    using (Font fontHead = new Font("Segoe UI", 34f, FontStyle.Bold))
+                    using (Font fontSub = new Font("Segoe UI", 16f, FontStyle.Regular))
+                    using (SolidBrush brWhite = new SolidBrush(Color.White))
+                    using (SolidBrush brMuted = new SolidBrush(Color.FromArgb(148, 163, 184)))
+                    using (SolidBrush brEmerald = new SolidBrush(Color.FromArgb(52, 211, 153)))
+                    using (SolidBrush brBadgeBg = new SolidBrush(Color.FromArgb(30, 41, 59)))
+                    using (Pen penBadge = new Pen(Color.FromArgb(16, 185, 129), 1.5f))
+                    {
+                        g.DrawString("PowerLockGuard v2.0", fontBrand, brWhite, 100, 60);
+
+                        Rectangle badgeRect = new Rectangle(445, 68, 145, 28);
+                        g.FillRectangle(brBadgeBg, badgeRect);
+                        g.DrawRectangle(penBadge, badgeRect);
+                        g.DrawString(tag, fontBadge, brEmerald, 453, 72);
+
+                        g.DrawString(headline, fontHead, brWhite, 100, 120);
+                        g.DrawString(subheadline, fontSub, brMuted, 100, 185);
+                    }
+
+                    // Centered form image with card shadow & border
+                    if (File.Exists(srcImgPath))
+                    {
+                        using (Image src = Image.FromFile(srcImgPath))
+                        {
+                            int imgX = (w - src.Width) / 2;
+                            int imgY = 255;
+
+                            using (SolidBrush brShadow = new SolidBrush(Color.FromArgb(60, 0, 0, 0)))
+                            {
+                                g.FillRectangle(brShadow, imgX - 10, imgY - 6, src.Width + 20, src.Height + 20);
+                            }
+
+                            g.DrawImage(src, imgX, imgY, src.Width, src.Height);
+
+                            using (Pen penBorder = new Pen(Color.FromArgb(51, 65, 85), 1.5f))
+                            {
+                                g.DrawRectangle(penBorder, imgX, imgY, src.Width, src.Height);
+                            }
+                        }
+                    }
+
+                    canvas.Save(outputPath, System.Drawing.Imaging.ImageFormat.Png);
                 }
             }
             catch { }
