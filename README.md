@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/gmksolution/PowerLockGuard/releases/latest"><img src="https://img.shields.io/badge/Download-PowerLockGuard.exe%20(~62%20KB)-10B981?style=for-the-badge&logo=windows&logoColor=white" alt="Download EXE" /></a>
+  <a href="https://github.com/GMKamrussama/PowerLockGuard/releases/latest"><img src="https://img.shields.io/badge/Download-PowerLockGuard.exe%20(~62%20KB)-10B981?style=for-the-badge&logo=windows&logoColor=white" alt="Download EXE" /></a>
   <a href="https://apps.microsoft.com/detail/PowerLockGuard"><img src="https://img.shields.io/badge/Microsoft_Store-Get_App-0078D4?style=for-the-badge&logo=microsoft&logoColor=white" alt="Microsoft Store" /></a>
   <a href="https://gmksolution.com"><img src="https://img.shields.io/badge/Developer-GMK_Solution-0F172A?style=for-the-badge&logo=googlechrome&logoColor=10B981" alt="GMK Solution" /></a>
 </p>
@@ -29,10 +29,10 @@
 
 ### Option 1: Direct Executable Download (GitHub Release)
 No installer required! Download the single lightweight standalone `.exe` (~62 KB) and run it:
-- 🚀 **[Download Latest PowerLockGuard.exe (v1.0.0)](https://github.com/gmksolution/PowerLockGuard/releases/latest/download/PowerLockGuard.exe)**
+- 🚀 **[Download Latest PowerLockGuard.exe (v1.0.0)](https://github.com/GMKamrussama/PowerLockGuard/releases/latest/download/PowerLockGuard.exe)**
 - Or download via **GitHub CLI**:
   ```bash
-  gh release download --repo gmksolution/PowerLockGuard --pattern "PowerLockGuard.exe"
+  gh release download --repo GMKamrussama/PowerLockGuard --pattern "PowerLockGuard.exe"
   ```
 
 ### Option 2: Microsoft Store / Windows Package Manager (winget)
@@ -183,7 +183,7 @@ Everything required to publish on the **Microsoft Partner Center** is prepared a
 
 ### গিটহ্যাব থেকে সরাসরি ডাউনলোড (.exe):
 কোনো ইন্সটলারের প্রয়োজন নেই! সরাসরি সিঙ্গেল এক্সিকিউটেবল ডাউনলোড করে ডাবল-ক্লিক করলেই চালু হবে:
-- 🚀 **[সরাসরি ডাউনলোড করুন: PowerLockGuard.exe (v1.0.0)](https://github.com/gmksolution/PowerLockGuard/releases/latest/download/PowerLockGuard.exe)**
+- 🚀 **[সরাসরি ডাউনলোড করুন: PowerLockGuard.exe (v1.0.0)](https://github.com/GMKamrussama/PowerLockGuard/releases/latest/download/PowerLockGuard.exe)**
 
 ### মাইক্রোসফট স্টোর বা টার্মিনাল থেকে ইনস্টল:
 - 🛒 **[মাইক্রোসফট স্টোর থেকে ইনস্টল করুন](https://apps.microsoft.com/detail/PowerLockGuard)**
