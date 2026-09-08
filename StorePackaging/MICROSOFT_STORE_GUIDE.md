@@ -1,4 +1,5 @@
-# Microsoft Store Publishing Guide for PowerLockGuard
+# Microsoft Store Publishing Guide for PowerLockGuard v1.0.0
+**Developer:** [GMK Solution](https://gmksolution.com)
 
 PowerLockGuard can be published to the Microsoft Store via Microsoft Partner Center using two methods:
 
@@ -9,11 +10,13 @@ Microsoft Store now officially supports unpackaged Win32 `.exe` applications dir
 
 1. **Sign in to Microsoft Partner Center**:
    - Go to [partner.microsoft.com](https://partner.microsoft.com/dashboard).
-   - Register as an individual or company developer account ($19 USD one-time fee).
+   - Publisher: **GMK Solution** (`gmksolution.com`).
+   - Register as an individual or company developer account.
 2. **Create a New App Submission**:
    - Click **Apps & games** -> **New product**.
    - Choose **Windows App (EXE or MSI)**.
    - Reserve your app name: `PowerLockGuard`.
+   - Version: `1.0.0`
 3. **App Details & Assets**:
    - Upload description, category (Developer Tools / Utilities).
    - Upload app icons and screenshots (minimum 1366x768).

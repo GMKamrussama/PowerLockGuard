@@ -6,15 +6,15 @@
 
   <Identity
     Name="PowerLockGuard.DeveloperTools"
-    Publisher="CN=YourPublisherName"
-    Version="2.0.0.0"
+    Publisher="CN=GMKSolution"
+    Version="1.0.0.0"
     ProcessorArchitecture="neutral" />
 
   <Properties>
     <DisplayName>PowerLockGuard</DisplayName>
-    <PublisherDisplayName>PowerLockGuard Contributors</PublisherDisplayName>
+    <PublisherDisplayName>GMK Solution</PublisherDisplayName>
     <Logo>app.ico</Logo>
-    <Description>Auto Sleep and Shutdown Guard for Developers, AI Agents and Laptops.</Description>
+    <Description>Auto Sleep and Shutdown Guard for Developers, AI Agents and Laptops by GMK Solution.</Description>
   </Properties>
 
   <Dependencies>

@@ -1,7 +1,8 @@
-# 🛡️ PowerLockGuard v2.0
+# 🛡️ PowerLockGuard v1.0.0
 
 > **Smart Power Guard for Developers, AI Agents & Laptop Users**  
-> *Auto-Sleep or Shut Down when AI Agents & IDE tasks finish — and Instant Deep Sleep on Charger Unplug.*
+> *Auto-Sleep or Shut Down when AI Agents & IDE tasks finish — and Instant Deep Sleep on Charger Unplug.*  
+> **Developed by [GMK Solution](https://gmksolution.com)**
 
 <p align="center">
   <a href="#-english"><b>English 🇬🇧</b></a> •
@@ -9,13 +10,15 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/YOUR_USERNAME/PowerLockGuard/releases/latest"><img src="https://img.shields.io/badge/Download-PowerLockGuard.exe%20(~62%20KB)-10B981?style=for-the-badge&logo=windows&logoColor=white" alt="Download EXE" /></a>
-  <a href="StorePackaging/MICROSOFT_STORE_GUIDE.md"><img src="https://img.shields.io/badge/Microsoft_Store-Get_App-0078D4?style=for-the-badge&logo=microsoft&logoColor=white" alt="Microsoft Store" /></a>
+  <a href="https://github.com/gmksolution/PowerLockGuard/releases/latest"><img src="https://img.shields.io/badge/Download-PowerLockGuard.exe%20(~62%20KB)-10B981?style=for-the-badge&logo=windows&logoColor=white" alt="Download EXE" /></a>
+  <a href="https://apps.microsoft.com/detail/PowerLockGuard"><img src="https://img.shields.io/badge/Microsoft_Store-Get_App-0078D4?style=for-the-badge&logo=microsoft&logoColor=white" alt="Microsoft Store" /></a>
+  <a href="https://gmksolution.com"><img src="https://img.shields.io/badge/Developer-GMK_Solution-0F172A?style=for-the-badge&logo=googlechrome&logoColor=10B981" alt="GMK Solution" /></a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/License-MIT-emerald.svg" alt="License" />
-  <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-blue.svg" alt="Windows" />
+  <img src="https://img.shields.io/badge/Version-1.0.0-emerald.svg" alt="Version 1.0.0" />
+  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" />
+  <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-blueviolet.svg" alt="Windows" />
   <img src="https://img.shields.io/badge/Runtime-.NET%20Framework%204.0+-purple.svg" alt=".NET" />
   <img src="https://img.shields.io/badge/Zero_Telemetry-100%25%20Offline-success.svg" alt="Offline" />
 </p>
@@ -25,15 +28,15 @@
 ## 📥 Download & Installation
 
 ### Option 1: Direct Executable Download (GitHub Release)
-No installer required. Download the single lightweight standalone `.exe` (~62 KB) and run it:
-- 🚀 **[Download Latest PowerLockGuard.exe](https://github.com/YOUR_USERNAME/PowerLockGuard/releases/latest/download/PowerLockGuard.exe)**
+No installer required! Download the single lightweight standalone `.exe` (~62 KB) and run it:
+- 🚀 **[Download Latest PowerLockGuard.exe (v1.0.0)](https://github.com/gmksolution/PowerLockGuard/releases/latest/download/PowerLockGuard.exe)**
 - Or download via **GitHub CLI**:
   ```bash
-  gh release download --repo YOUR_USERNAME/PowerLockGuard --pattern "PowerLockGuard.exe"
+  gh release download --repo gmksolution/PowerLockGuard --pattern "PowerLockGuard.exe"
   ```
 
 ### Option 2: Microsoft Store / Windows Package Manager (winget)
-You can install and keep PowerLockGuard updated via the Microsoft Store or command line:
+You can install and automatically update PowerLockGuard via Microsoft Store:
 - 🛒 **[Get it from Microsoft Store](https://apps.microsoft.com/detail/PowerLockGuard)**
 - Or install via **winget**:
   ```powershell
@@ -44,6 +47,13 @@ You can install and keep PowerLockGuard updated via the Microsoft Store or comma
 
 <a name="-english"></a>
 # 🇬🇧 English Documentation
+
+## 🏢 About the Developer
+PowerLockGuard is crafted by **[GMK Solution](https://gmksolution.com)** — empowering developers with high-performance, privacy-first, lightweight productivity tools.  
+- **Official Website:** [https://gmksolution.com](https://gmksolution.com)
+- **Support & Inquiries:** [gmksolution.com](https://gmksolution.com)
+
+---
 
 ## 🌟 The Problems We Solve
 
@@ -124,6 +134,12 @@ msbuild PowerLockGuard.csproj /p:Configuration=Release
 <a name="-বাংলা-ভার্সন-bengali"></a>
 # 🇧🇩 বাংলা ভার্সন (Bengali Documentation)
 
+## 🏢 ডেভেলপার পরিচিতি
+**PowerLockGuard v1.0.0** তৈরি করেছে **[GMK Solution](https://gmksolution.com)**। এটি ডেভেলপারদের জন্য একটি সম্পূর্ণ অফলাইন, দ্রুতগতির এবং ওপেন-সোর্স পাওয়ার ম্যানেজমেন্ট সফটওয়্যার।  
+- **অফিশিয়াল ওয়েবসাইট:** [https://gmksolution.com](https://gmksolution.com)
+
+---
+
 ## 🌟 যে দুটি সমস্যার স্থায়ী সমাধান:
 
 ### 🌙 ১. রাতে এআই এজেন্ট বা কোড রান করে নিশ্চিন্তে ঘুমান:
@@ -144,7 +160,7 @@ msbuild PowerLockGuard.csproj /p:Configuration=Release
 
 ### গিটহ্যাব থেকে সরাসরি ডাউনলোড (.exe):
 কোনো ইন্সটলারের প্রয়োজন নেই! সরাসরি সিঙ্গেল এক্সিকিউটেবল ডাউনলোড করে ডাবল-ক্লিক করলেই চালু হবে:
-- 🚀 **[সরাসরি ডাউনলোড করুন: PowerLockGuard.exe (~62 KB)](https://github.com/YOUR_USERNAME/PowerLockGuard/releases/latest/download/PowerLockGuard.exe)**
+- 🚀 **[সরাসরি ডাউনলোড করুন: PowerLockGuard.exe (v1.0.0)](https://github.com/gmksolution/PowerLockGuard/releases/latest/download/PowerLockGuard.exe)**
 
 ### মাইক্রোসফট স্টোর বা টার্মিনাল থেকে ইনস্টল:
 - 🛒 **[মাইক্রোসফট স্টোর থেকে ইনস্টল করুন](https://apps.microsoft.com/detail/PowerLockGuard)**
@@ -180,4 +196,5 @@ msbuild PowerLockGuard.csproj /p:Configuration=Release
 
 ## 📄 লাইসেন্স (License)
 
-সম্পূর্ণ **MIT License**-এর অধীনে ওপেন-সোর্স করা হয়েছে। বিশ্বের যেকোনো ডেভেলপার এটি বিনামূল্যে ব্যবহার, মডিফাই ও রি-ডিস্ট্রিবিউট করতে পারবেন। বিস্তারিত জানতে [`LICENSE`](LICENSE) ফাইলটি দেখুন।
+সম্পূর্ণ **MIT License**-এর অধীনে ওপেন-সোর্স করা হয়েছে। বিশ্বের যেকোনো ডেভেলপার এটি বিনামূল্যে ব্যবহার, মডিফাই ও রি-ডিস্ট্রিবিউট করতে পারবেন। বিস্তারিত জানতে [`LICENSE`](LICENSE) ফাইলটি দেখুন।  
+**Developer:** [GMK Solution](https://gmksolution.com)

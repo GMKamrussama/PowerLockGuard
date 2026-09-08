@@ -4,10 +4,22 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Media;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 using System.Diagnostics;
+
+[assembly: AssemblyTitle("PowerLockGuard")]
+[assembly: AssemblyDescription("Smart Power Guard for Developers, AI Agents & Laptop Users")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("GMK Solution")]
+[assembly: AssemblyProduct("PowerLockGuard")]
+[assembly: AssemblyCopyright("Copyright © 2026 GMK Solution (gmksolution.com)")]
+[assembly: AssemblyTrademark("GMK Solution")]
+[assembly: AssemblyCulture("")]
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
 
 namespace PowerLockGuard
 {
@@ -412,6 +424,7 @@ namespace PowerLockGuard
             lblHeader.ForeColor = Color.FromArgb(245, 158, 11); // Amber
             lblHeader.Location = new Point(25, 20);
             lblHeader.Size = new Size(450, 30);
+            lblHeader.UseMnemonic = false;
             this.Controls.Add(lblHeader);
 
             lblAction = new Label();
@@ -420,6 +433,7 @@ namespace PowerLockGuard
             lblAction.ForeColor = Color.FromArgb(203, 213, 225);
             lblAction.Location = new Point(27, 52);
             lblAction.Size = new Size(445, 25);
+            lblAction.UseMnemonic = false;
             this.Controls.Add(lblAction);
 
             // Big Timer Display
@@ -614,7 +628,7 @@ namespace PowerLockGuard
             watchdogTimer.Tick += WatchdogTimer_Tick;
             watchdogTimer.Start();
 
-            LogActivity("PowerLockGuard v2.0 started successfully.");
+            LogActivity("PowerLockGuard v1.0.0 started successfully.");
             if (settings.ChargerGuardEnabled) LogActivity("Charger Unplug Guard is ACTIVE.");
             if (settings.WatchdogEnabled) LogActivity("Work Watchdog is ACTIVE.");
         }
@@ -626,12 +640,12 @@ namespace PowerLockGuard
 
         private void InitializeUI()
         {
-            this.Text = "PowerLockGuard v2.0 - Dev Work & Charger Guard";
-            this.Size = new Size(540, 520);
+            this.Text = "PowerLockGuard v1.0.0 - Dev Work & Charger Guard";
+            this.ClientSize = new Size(540, 570);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
-            this.BackColor = Color.FromArgb(248, 250, 252); // Modern light slate background
+            this.BackColor = Color.FromArgb(248, 250, 252);
             this.Font = new Font("Segoe UI", 9.25f, FontStyle.Regular);
 
             // Load app icon if present
@@ -641,10 +655,10 @@ namespace PowerLockGuard
                 try { this.Icon = new Icon(icoPath); } catch { }
             }
 
-            // Header Banner
+            // 1. Top Header Banner (Fixed non-docked coordinates: Y = 0 to 70)
             pnlHeader = new Panel();
-            pnlHeader.Dock = DockStyle.Top;
-            pnlHeader.Height = 70;
+            pnlHeader.Location = new Point(0, 0);
+            pnlHeader.Size = new Size(540, 70);
             pnlHeader.BackColor = Color.FromArgb(15, 23, 42); // Dark slate #0f172a
             this.Controls.Add(pnlHeader);
 
@@ -654,15 +668,16 @@ namespace PowerLockGuard
             lblTitle.ForeColor = Color.White;
             lblTitle.Location = new Point(18, 12);
             lblTitle.AutoSize = true;
+            lblTitle.UseMnemonic = false;
             pnlHeader.Controls.Add(lblTitle);
 
             Label lblBadge = new Label();
-            lblBadge.Text = "v2.0 PRO";
-            lblBadge.Font = new Font("Segoe UI", 7.5f, FontStyle.Bold);
+            lblBadge.Text = "v1.0.0";
+            lblBadge.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
             lblBadge.ForeColor = Color.FromArgb(16, 185, 129);
             lblBadge.BackColor = Color.FromArgb(30, 41, 59);
             lblBadge.Location = new Point(190, 16);
-            lblBadge.Size = new Size(58, 20);
+            lblBadge.Size = new Size(62, 20);
             lblBadge.TextAlign = ContentAlignment.MiddleCenter;
             pnlHeader.Controls.Add(lblBadge);
 
@@ -670,20 +685,22 @@ namespace PowerLockGuard
             lblSubtitle.Text = "AI Agent & IDE Work Watchdog + Instant Charger Unplug Guard";
             lblSubtitle.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
             lblSubtitle.ForeColor = Color.FromArgb(148, 163, 184);
-            lblSubtitle.Location = new Point(20, 40);
+            lblSubtitle.Location = new Point(20, 42);
             lblSubtitle.AutoSize = true;
+            lblSubtitle.UseMnemonic = false;
             pnlHeader.Controls.Add(lblSubtitle);
 
-            // Navigation Bar (Tabs)
+            // 2. Tab Navigation Bar (Fixed non-docked coordinates: Y = 70 to 112)
             pnlTabNav = new Panel();
-            pnlTabNav.Dock = DockStyle.Top;
-            pnlTabNav.Height = 42;
+            pnlTabNav.Location = new Point(0, 70);
+            pnlTabNav.Size = new Size(540, 42);
             pnlTabNav.BackColor = Color.FromArgb(241, 245, 249);
             this.Controls.Add(pnlTabNav);
 
             btnTabCharger = CreateTabButton("🛡️ Charger Guard", 0);
             btnTabWatchdog = CreateTabButton("🤖 Work Watchdog", 1);
             btnTabSettings = CreateTabButton("⚙️ Settings & Logs", 2);
+            btnTabSettings.UseMnemonic = false;
 
             btnTabCharger.Click += (s, e) => SwitchTab(0);
             btnTabWatchdog.Click += (s, e) => SwitchTab(1);
@@ -693,9 +710,11 @@ namespace PowerLockGuard
             pnlTabNav.Controls.Add(btnTabWatchdog);
             pnlTabNav.Controls.Add(btnTabSettings);
 
-            // Tab Container
+            // 3. Tab Container (Fixed non-docked coordinates: Y = 112 to 570, Height = 458)
             pnlTabContainer = new Panel();
-            pnlTabContainer.Dock = DockStyle.Fill;
+            pnlTabContainer.Location = new Point(0, 112);
+            pnlTabContainer.Size = new Size(540, 458);
+            pnlTabContainer.BackColor = Color.FromArgb(248, 250, 252);
             this.Controls.Add(pnlTabContainer);
 
             // Initialize 3 tab panels
@@ -703,8 +722,8 @@ namespace PowerLockGuard
             BuildTabWatchdog();
             BuildTabSettings();
 
-            // Bring Tab 2 (Work Watchdog) or Tab 1 to front
-            SwitchTab(1); // Default to Work Watchdog to highlight new features!
+            // Default to Work Watchdog
+            SwitchTab(1);
 
             this.FormClosing += MainForm_FormClosing;
         }
@@ -713,14 +732,15 @@ namespace PowerLockGuard
         {
             Button btn = new Button();
             btn.Text = text;
-            btn.Size = new Size(175, 40);
-            btn.Location = new Point(index * 176, 1);
+            btn.Size = new Size(180, 41);
+            btn.Location = new Point(index * 180, 1);
             btn.FlatStyle = FlatStyle.Flat;
             btn.FlatAppearance.BorderSize = 0;
             btn.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
             btn.Cursor = Cursors.Hand;
             btn.BackColor = Color.Transparent;
             btn.ForeColor = Color.FromArgb(71, 85, 105);
+            btn.UseMnemonic = false;
             return btn;
         }
 
@@ -749,42 +769,45 @@ namespace PowerLockGuard
 
             // Big Toggle Button
             btnToggleCharger = new Button();
-            btnToggleCharger.Location = new Point(25, 20);
-            btnToggleCharger.Size = new Size(475, 58);
+            btnToggleCharger.Location = new Point(25, 15);
+            btnToggleCharger.Size = new Size(490, 56);
             btnToggleCharger.FlatStyle = FlatStyle.Flat;
             btnToggleCharger.FlatAppearance.BorderSize = 0;
             btnToggleCharger.Font = new Font("Segoe UI", 11.5f, FontStyle.Bold);
             btnToggleCharger.Cursor = Cursors.Hand;
             btnToggleCharger.Click += BtnToggleCharger_Click;
+            btnToggleCharger.UseMnemonic = false;
             tabCharger.Controls.Add(btnToggleCharger);
             UpdateChargerToggleUI();
 
             // Status Card
             GroupBox grpStatus = new GroupBox();
-            grpStatus.Text = " Charger & Power Status ";
-            grpStatus.Location = new Point(25, 95);
-            grpStatus.Size = new Size(475, 110);
+            grpStatus.Text = " Charger && Power Status ";
+            grpStatus.Location = new Point(25, 82);
+            grpStatus.Size = new Size(490, 110);
             grpStatus.ForeColor = Color.FromArgb(71, 85, 105);
             tabCharger.Controls.Add(grpStatus);
 
             lblChargerStatus = new Label();
             lblChargerStatus.Location = new Point(18, 25);
-            lblChargerStatus.Size = new Size(440, 25);
+            lblChargerStatus.Size = new Size(455, 25);
             lblChargerStatus.Font = new Font("Segoe UI", 10.5f, FontStyle.Bold);
+            lblChargerStatus.UseMnemonic = false;
             grpStatus.Controls.Add(lblChargerStatus);
 
             lblChargerDescription = new Label();
             lblChargerDescription.Location = new Point(18, 55);
-            lblChargerDescription.Size = new Size(440, 45);
+            lblChargerDescription.Size = new Size(455, 45);
             lblChargerDescription.Font = new Font("Segoe UI", 8.75f, FontStyle.Regular);
             lblChargerDescription.ForeColor = Color.FromArgb(100, 116, 139);
+            lblChargerDescription.UseMnemonic = false;
             grpStatus.Controls.Add(lblChargerDescription);
 
             // Action Selection Card
             GroupBox grpAction = new GroupBox();
             grpAction.Text = " Action When Charger Unplugged ";
-            grpAction.Location = new Point(25, 220);
-            grpAction.Size = new Size(475, 80);
+            grpAction.Location = new Point(25, 202);
+            grpAction.Size = new Size(490, 80);
             grpAction.ForeColor = Color.FromArgb(71, 85, 105);
             tabCharger.Controls.Add(grpAction);
 
@@ -792,6 +815,7 @@ namespace PowerLockGuard
             lblChargerActionPrompt.Text = "Trigger this action on unplug:";
             lblChargerActionPrompt.Location = new Point(18, 30);
             lblChargerActionPrompt.Size = new Size(190, 25);
+            lblChargerActionPrompt.UseMnemonic = false;
             grpAction.Controls.Add(lblChargerActionPrompt);
 
             cmbChargerAction = new ComboBox();
@@ -803,7 +827,7 @@ namespace PowerLockGuard
                 "Lock Workstation"
             });
             cmbChargerAction.Location = new Point(215, 26);
-            cmbChargerAction.Size = new Size(240, 28);
+            cmbChargerAction.Size = new Size(255, 28);
             SetComboSelectedAction(cmbChargerAction, settings.ChargerGuardAction);
             cmbChargerAction.SelectedIndexChanged += (s, e) =>
             {
@@ -815,11 +839,25 @@ namespace PowerLockGuard
 
             Label lblNote = new Label();
             lblNote.Text = "💡 Tip: Sleep mode keeps all open IDE files and RAM intact. Zero battery drain.";
-            lblNote.Location = new Point(28, 315);
-            lblNote.Size = new Size(470, 30);
+            lblNote.Location = new Point(28, 292);
+            lblNote.Size = new Size(485, 30);
             lblNote.ForeColor = Color.FromArgb(100, 116, 139);
             lblNote.Font = new Font("Segoe UI", 8.5f, FontStyle.Italic);
+            lblNote.UseMnemonic = false;
             tabCharger.Controls.Add(lblNote);
+
+            LinkLabel lnkAboutCharger = new LinkLabel();
+            lnkAboutCharger.Text = "PowerLockGuard v1.0.0 • Developed by GMK Solution (gmksolution.com)";
+            lnkAboutCharger.Location = new Point(25, 395);
+            lnkAboutCharger.Size = new Size(490, 25);
+            lnkAboutCharger.TextAlign = ContentAlignment.MiddleCenter;
+            lnkAboutCharger.LinkColor = Color.FromArgb(16, 185, 129);
+            lnkAboutCharger.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
+            lnkAboutCharger.LinkClicked += (s, e) =>
+            {
+                try { Process.Start("https://gmksolution.com"); } catch { }
+            };
+            tabCharger.Controls.Add(lnkAboutCharger);
         }
         #endregion
 
@@ -832,21 +870,22 @@ namespace PowerLockGuard
 
             // Master Watchdog Toggle Button
             btnToggleWatchdog = new Button();
-            btnToggleWatchdog.Location = new Point(25, 15);
-            btnToggleWatchdog.Size = new Size(475, 54);
+            btnToggleWatchdog.Location = new Point(25, 12);
+            btnToggleWatchdog.Size = new Size(490, 52);
             btnToggleWatchdog.FlatStyle = FlatStyle.Flat;
             btnToggleWatchdog.FlatAppearance.BorderSize = 0;
             btnToggleWatchdog.Font = new Font("Segoe UI", 11f, FontStyle.Bold);
             btnToggleWatchdog.Cursor = Cursors.Hand;
             btnToggleWatchdog.Click += BtnToggleWatchdog_Click;
+            btnToggleWatchdog.UseMnemonic = false;
             tabWatchdog.Controls.Add(btnToggleWatchdog);
             UpdateWatchdogToggleUI();
 
             // Configuration Group
             GroupBox grpConfig = new GroupBox();
             grpConfig.Text = " Watchdog Monitoring Settings ";
-            grpConfig.Location = new Point(25, 80);
-            grpConfig.Size = new Size(475, 155);
+            grpConfig.Location = new Point(25, 70);
+            grpConfig.Size = new Size(490, 172);
             grpConfig.ForeColor = Color.FromArgb(71, 85, 105);
             tabWatchdog.Controls.Add(grpConfig);
 
@@ -854,7 +893,8 @@ namespace PowerLockGuard
             Label lblAct = new Label();
             lblAct.Text = "When work finishes:";
             lblAct.Location = new Point(15, 26);
-            lblAct.Size = new Size(150, 22);
+            lblAct.Size = new Size(145, 22);
+            lblAct.UseMnemonic = false;
             grpConfig.Controls.Add(lblAct);
 
             cmbWatchdogAction = new ComboBox();
@@ -864,8 +904,8 @@ namespace PowerLockGuard
                 "Shut Down PC",
                 "Hibernate PC"
             });
-            cmbWatchdogAction.Location = new Point(175, 23);
-            cmbWatchdogAction.Size = new Size(280, 28);
+            cmbWatchdogAction.Location = new Point(165, 23);
+            cmbWatchdogAction.Size = new Size(305, 28);
             SetComboSelectedAction(cmbWatchdogAction, settings.WatchdogAction);
             cmbWatchdogAction.SelectedIndexChanged += (s, e) =>
             {
@@ -878,8 +918,9 @@ namespace PowerLockGuard
             // Row 2: Target Tasks / Agents
             Label lblTarget = new Label();
             lblTarget.Text = "Monitored tasks:";
-            lblTarget.Location = new Point(15, 60);
-            lblTarget.Size = new Size(150, 22);
+            lblTarget.Location = new Point(15, 62);
+            lblTarget.Size = new Size(145, 22);
+            lblTarget.UseMnemonic = false;
             grpConfig.Controls.Add(lblTarget);
 
             cmbWatchdogMode = new ComboBox();
@@ -888,8 +929,8 @@ namespace PowerLockGuard
                 "Auto-Detect AI Agents & IDEs (Claude, Cursor, VS Code, etc.)",
                 "Specific Process Name (e.g. claude, python, npm)"
             });
-            cmbWatchdogMode.Location = new Point(175, 57);
-            cmbWatchdogMode.Size = new Size(280, 28);
+            cmbWatchdogMode.Location = new Point(165, 59);
+            cmbWatchdogMode.Size = new Size(305, 28);
             cmbWatchdogMode.SelectedIndex = (settings.WatchdogMode == "SpecificProcess") ? 1 : 0;
             cmbWatchdogMode.SelectedIndexChanged += (s, e) =>
             {
@@ -902,8 +943,8 @@ namespace PowerLockGuard
 
             // Row 2.5: Custom process textbox
             txtCustomProcess = new TextBox();
-            txtCustomProcess.Location = new Point(175, 88);
-            txtCustomProcess.Size = new Size(280, 25);
+            txtCustomProcess.Location = new Point(165, 92);
+            txtCustomProcess.Size = new Size(305, 25);
             txtCustomProcess.Text = settings.WatchdogTargetProcess;
             txtCustomProcess.Visible = (settings.WatchdogMode == "SpecificProcess");
             txtCustomProcess.TextChanged += (s, e) =>
@@ -916,8 +957,9 @@ namespace PowerLockGuard
             // Row 3: Grace Period
             Label lblGrace = new Label();
             lblGrace.Text = "Inactivity buffer:";
-            lblGrace.Location = new Point(15, 120);
-            lblGrace.Size = new Size(150, 22);
+            lblGrace.Location = new Point(15, 130);
+            lblGrace.Size = new Size(145, 22);
+            lblGrace.UseMnemonic = false;
             grpConfig.Controls.Add(lblGrace);
 
             cmbWatchdogGrace = new ComboBox();
@@ -929,8 +971,8 @@ namespace PowerLockGuard
                 "5 Minutes",
                 "10 Minutes"
             });
-            cmbWatchdogGrace.Location = new Point(175, 117);
-            cmbWatchdogGrace.Size = new Size(280, 28);
+            cmbWatchdogGrace.Location = new Point(165, 127);
+            cmbWatchdogGrace.Size = new Size(305, 28);
             SelectGraceCombo(cmbWatchdogGrace, settings.WatchdogGraceMinutes);
             cmbWatchdogGrace.SelectedIndexChanged += (s, e) =>
             {
@@ -942,44 +984,46 @@ namespace PowerLockGuard
 
             // Live Telemetry & Status Group
             GroupBox grpTelemetry = new GroupBox();
-            grpTelemetry.Text = " Live Work & Task Telemetry ";
-            grpTelemetry.Location = new Point(25, 245);
-            grpTelemetry.Size = new Size(475, 115);
+            grpTelemetry.Text = " Live Work && Task Telemetry ";
+            grpTelemetry.Location = new Point(25, 248);
+            grpTelemetry.Size = new Size(490, 135);
             grpTelemetry.ForeColor = Color.FromArgb(71, 85, 105);
             tabWatchdog.Controls.Add(grpTelemetry);
 
             lblWatchdogActivity = new Label();
             lblWatchdogActivity.Text = "Status: Initializing...";
             lblWatchdogActivity.Location = new Point(15, 24);
-            lblWatchdogActivity.Size = new Size(330, 22);
+            lblWatchdogActivity.Size = new Size(345, 22);
             lblWatchdogActivity.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+            lblWatchdogActivity.UseMnemonic = false;
             grpTelemetry.Controls.Add(lblWatchdogActivity);
 
             lblWatchdogCpu = new Label();
             lblWatchdogCpu.Text = "CPU: 0.0%";
-            lblWatchdogCpu.Location = new Point(360, 24);
-            lblWatchdogCpu.Size = new Size(95, 22);
+            lblWatchdogCpu.Location = new Point(370, 24);
+            lblWatchdogCpu.Size = new Size(100, 22);
             lblWatchdogCpu.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
             lblWatchdogCpu.TextAlign = ContentAlignment.TopRight;
             grpTelemetry.Controls.Add(lblWatchdogCpu);
 
             prgActivity = new ProgressBar();
             prgActivity.Location = new Point(18, 50);
-            prgActivity.Size = new Size(438, 12);
+            prgActivity.Size = new Size(452, 12);
             prgActivity.Maximum = 100;
             grpTelemetry.Controls.Add(prgActivity);
 
             lblWatchdogTimer = new Label();
             lblWatchdogTimer.Text = "Waiting for tasks to start...";
             lblWatchdogTimer.Location = new Point(15, 72);
-            lblWatchdogTimer.Size = new Size(350, 32);
+            lblWatchdogTimer.Size = new Size(365, 32);
             lblWatchdogTimer.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
             lblWatchdogTimer.ForeColor = Color.FromArgb(100, 116, 139);
+            lblWatchdogTimer.UseMnemonic = false;
             grpTelemetry.Controls.Add(lblWatchdogTimer);
 
             btnRefreshProcesses = new Button();
             btnRefreshProcesses.Text = "🔄 Scan";
-            btnRefreshProcesses.Location = new Point(375, 72);
+            btnRefreshProcesses.Location = new Point(390, 72);
             btnRefreshProcesses.Size = new Size(80, 28);
             btnRefreshProcesses.FlatStyle = FlatStyle.Flat;
             btnRefreshProcesses.BackColor = Color.FromArgb(241, 245, 249);
@@ -989,6 +1033,19 @@ namespace PowerLockGuard
                 UpdateTelemetryUI();
             };
             grpTelemetry.Controls.Add(btnRefreshProcesses);
+
+            LinkLabel lnkAboutWatchdog = new LinkLabel();
+            lnkAboutWatchdog.Text = "Developed by GMK Solution (gmksolution.com) • Open Source & Store Ready";
+            lnkAboutWatchdog.Location = new Point(25, 395);
+            lnkAboutWatchdog.Size = new Size(490, 25);
+            lnkAboutWatchdog.TextAlign = ContentAlignment.MiddleCenter;
+            lnkAboutWatchdog.LinkColor = Color.FromArgb(16, 185, 129);
+            lnkAboutWatchdog.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
+            lnkAboutWatchdog.LinkClicked += (s, e) =>
+            {
+                try { Process.Start("https://gmksolution.com"); } catch { }
+            };
+            tabWatchdog.Controls.Add(lnkAboutWatchdog);
         }
         #endregion
 
@@ -1002,7 +1059,7 @@ namespace PowerLockGuard
             // General options
             chkStartup = new CheckBox();
             chkStartup.Text = "Start PowerLockGuard automatically with Windows";
-            chkStartup.Location = new Point(25, 15);
+            chkStartup.Location = new Point(25, 12);
             chkStartup.AutoSize = true;
             chkStartup.Checked = settings.StartWithWindows;
             chkStartup.CheckedChanged += (s, e) =>
@@ -1016,7 +1073,7 @@ namespace PowerLockGuard
 
             chkSound = new CheckBox();
             chkSound.Text = "Play warning sound alert before Sleep / Shutdown";
-            chkSound.Location = new Point(25, 42);
+            chkSound.Location = new Point(25, 36);
             chkSound.AutoSize = true;
             chkSound.Checked = settings.PlayAlertSound;
             chkSound.CheckedChanged += (s, e) =>
@@ -1028,15 +1085,16 @@ namespace PowerLockGuard
 
             Label lblCountPrompt = new Label();
             lblCountPrompt.Text = "Safety Countdown Duration:";
-            lblCountPrompt.Location = new Point(25, 73);
+            lblCountPrompt.Location = new Point(25, 65);
             lblCountPrompt.Size = new Size(180, 22);
+            lblCountPrompt.UseMnemonic = false;
             tabSettings.Controls.Add(lblCountPrompt);
 
             cmbCountdownSeconds = new ComboBox();
             cmbCountdownSeconds.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbCountdownSeconds.Items.AddRange(new object[] { "15 Seconds", "30 Seconds", "60 Seconds" });
-            cmbCountdownSeconds.Location = new Point(210, 70);
-            cmbCountdownSeconds.Size = new Size(130, 26);
+            cmbCountdownSeconds.Location = new Point(205, 62);
+            cmbCountdownSeconds.Size = new Size(125, 26);
             if (settings.CountdownSeconds == 15) cmbCountdownSeconds.SelectedIndex = 0;
             else if (settings.CountdownSeconds == 60) cmbCountdownSeconds.SelectedIndex = 2;
             else cmbCountdownSeconds.SelectedIndex = 1;
@@ -1050,11 +1108,11 @@ namespace PowerLockGuard
             };
             tabSettings.Controls.Add(cmbCountdownSeconds);
 
-            // Action Test buttons
+            // Action Test button
             btnTestCountdown = new Button();
             btnTestCountdown.Text = "🔔 Test Warning Dialog";
-            btnTestCountdown.Location = new Point(355, 68);
-            btnTestCountdown.Size = new Size(145, 30);
+            btnTestCountdown.Location = new Point(345, 60);
+            btnTestCountdown.Size = new Size(170, 30);
             btnTestCountdown.FlatStyle = FlatStyle.Flat;
             btnTestCountdown.BackColor = Color.FromArgb(241, 245, 249);
             btnTestCountdown.Cursor = Cursors.Hand;
@@ -1063,31 +1121,31 @@ namespace PowerLockGuard
 
             // Activity Log Box
             GroupBox grpLog = new GroupBox();
-            grpLog.Text = " Activity & Event History ";
-            grpLog.Location = new Point(25, 110);
-            grpLog.Size = new Size(475, 240);
+            grpLog.Text = " Activity && Event History ";
+            grpLog.Location = new Point(25, 98);
+            grpLog.Size = new Size(490, 205);
             grpLog.ForeColor = Color.FromArgb(71, 85, 105);
             tabSettings.Controls.Add(grpLog);
 
             lstActivityLog = new ListBox();
-            lstActivityLog.Location = new Point(15, 25);
-            lstActivityLog.Size = new Size(445, 160);
+            lstActivityLog.Location = new Point(15, 22);
+            lstActivityLog.Size = new Size(460, 140);
             lstActivityLog.Font = new Font("Consolas", 8.25f, FontStyle.Regular);
             lstActivityLog.BackColor = Color.FromArgb(248, 250, 252);
             grpLog.Controls.Add(lstActivityLog);
 
             btnClearLog = new Button();
             btnClearLog.Text = "Clear History";
-            btnClearLog.Location = new Point(15, 195);
-            btnClearLog.Size = new Size(100, 28);
+            btnClearLog.Location = new Point(15, 168);
+            btnClearLog.Size = new Size(100, 26);
             btnClearLog.FlatStyle = FlatStyle.Flat;
             btnClearLog.Click += (s, e) => lstActivityLog.Items.Clear();
             grpLog.Controls.Add(btnClearLog);
 
             btnTestSleep = new Button();
             btnTestSleep.Text = "💤 Sleep PC Now";
-            btnTestSleep.Location = new Point(340, 195);
-            btnTestSleep.Size = new Size(120, 28);
+            btnTestSleep.Location = new Point(345, 168);
+            btnTestSleep.Size = new Size(130, 26);
             btnTestSleep.FlatStyle = FlatStyle.Flat;
             btnTestSleep.BackColor = Color.FromArgb(226, 232, 240);
             btnTestSleep.Click += (s, e) =>
@@ -1096,6 +1154,45 @@ namespace PowerLockGuard
                 PowerManager.ExecuteAction("Sleep");
             };
             grpLog.Controls.Add(btnTestSleep);
+
+            // About & Developer Card
+            GroupBox grpAbout = new GroupBox();
+            grpAbout.Text = " About && Developer ";
+            grpAbout.Location = new Point(25, 312);
+            grpAbout.Size = new Size(490, 110);
+            grpAbout.ForeColor = Color.FromArgb(71, 85, 105);
+            tabSettings.Controls.Add(grpAbout);
+
+            Label lblAboutTitle = new Label();
+            lblAboutTitle.Text = "PowerLockGuard v1.0.0 — Official Developer Release";
+            lblAboutTitle.Location = new Point(15, 22);
+            lblAboutTitle.Size = new Size(460, 22);
+            lblAboutTitle.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+            lblAboutTitle.ForeColor = Color.FromArgb(15, 23, 42);
+            lblAboutTitle.UseMnemonic = false;
+            grpAbout.Controls.Add(lblAboutTitle);
+
+            Label lblAboutDesc = new Label();
+            lblAboutDesc.Text = "Lightweight power guard that puts your PC to deep sleep or shuts down\nwhen AI agents finish coding, and locks immediately upon charger unplug.";
+            lblAboutDesc.Location = new Point(15, 46);
+            lblAboutDesc.Size = new Size(460, 36);
+            lblAboutDesc.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
+            lblAboutDesc.ForeColor = Color.FromArgb(100, 116, 139);
+            lblAboutDesc.UseMnemonic = false;
+            grpAbout.Controls.Add(lblAboutDesc);
+
+            LinkLabel lnkWebsite = new LinkLabel();
+            lnkWebsite.Text = "🌐 Developer Website: https://gmksolution.com  |  GMK Solution";
+            lnkWebsite.Location = new Point(15, 84);
+            lnkWebsite.Size = new Size(460, 20);
+            lnkWebsite.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            lnkWebsite.LinkColor = Color.FromArgb(16, 185, 129);
+            lnkWebsite.UseMnemonic = false;
+            lnkWebsite.LinkClicked += (s, e) =>
+            {
+                try { Process.Start("https://gmksolution.com"); } catch { }
+            };
+            grpAbout.Controls.Add(lnkWebsite);
         }
         #endregion
 
@@ -1312,9 +1409,15 @@ namespace PowerLockGuard
         {
             trayMenu = new ContextMenuStrip();
 
-            ToolStripMenuItem mnuHeader = new ToolStripMenuItem("PowerLockGuard v2.0");
+            ToolStripMenuItem mnuHeader = new ToolStripMenuItem("PowerLockGuard v1.0.0");
             mnuHeader.Enabled = false;
             trayMenu.Items.Add(mnuHeader);
+
+            ToolStripMenuItem mnuWebsite = new ToolStripMenuItem("🌐 GMK Solution (gmksolution.com)", null, (s, e) =>
+            {
+                try { Process.Start("https://gmksolution.com"); } catch { }
+            });
+            trayMenu.Items.Add(mnuWebsite);
             trayMenu.Items.Add(new ToolStripSeparator());
 
             ToolStripMenuItem mnuToggleCharger = new ToolStripMenuItem("Toggle Charger Guard", null, (s, e) =>
@@ -1355,7 +1458,7 @@ namespace PowerLockGuard
             trayMenu.Items.Add(mnuExit);
 
             trayIcon = new NotifyIcon();
-            trayIcon.Text = "PowerLockGuard v2.0";
+            trayIcon.Text = "PowerLockGuard v1.0.0";
 
             string icoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app.ico");
             if (File.Exists(icoPath))
@@ -1395,7 +1498,7 @@ namespace PowerLockGuard
             {
                 e.Cancel = true;
                 this.Hide();
-                trayIcon.ShowBalloonTip(2000, "PowerLockGuard v2.0",
+                trayIcon.ShowBalloonTip(2000, "PowerLockGuard v1.0.0",
                     "Running quietly in system tray. Charger Guard & Work Watchdog remain active!", ToolTipIcon.Info);
             }
         }
@@ -1482,6 +1585,9 @@ namespace PowerLockGuard
 
                 // 1. Tab 1: Charger Guard
                 SwitchTab(0);
+                lblChargerStatus.Text = "⚡ Charger: CONNECTED (Charging / Plugged in)";
+                lblChargerStatus.ForeColor = Color.FromArgb(5, 150, 105);
+                lblChargerDescription.Text = "Protection ACTIVE: Unplugging charger will instantly trigger SLEEP.";
                 Application.DoEvents();
                 string pathCharger = Path.Combine(docDir, "02_charger_guard.png");
                 CaptureForm(this, pathCharger);
@@ -1500,7 +1606,7 @@ namespace PowerLockGuard
                 // 3. Tab 3: Settings & Logs
                 SwitchTab(2);
                 lstActivityLog.Items.Clear();
-                lstActivityLog.Items.Add("[23:45:10] PowerLockGuard v2.0 initialized.");
+                lstActivityLog.Items.Add("[23:45:10] PowerLockGuard v1.0.0 initialized.");
                 lstActivityLog.Items.Add("[23:45:12] Charger Guard ACTIVE: Unplug triggers instant Deep Sleep.");
                 lstActivityLog.Items.Add("[23:55:00] Work Watchdog ACTIVE: Monitoring AI Agents & IDE tasks.");
                 lstActivityLog.Items.Add("[00:15:30] Claude Code & Cursor build started (CPU: 28%).");
@@ -1592,18 +1698,21 @@ namespace PowerLockGuard
                     using (Font fontBadge = new Font("Segoe UI", 11f, FontStyle.Bold))
                     using (Font fontHead = new Font("Segoe UI", 34f, FontStyle.Bold))
                     using (Font fontSub = new Font("Segoe UI", 16f, FontStyle.Regular))
+                    using (Font fontCredit = new Font("Segoe UI", 11f, FontStyle.Regular))
                     using (SolidBrush brWhite = new SolidBrush(Color.White))
                     using (SolidBrush brMuted = new SolidBrush(Color.FromArgb(148, 163, 184)))
                     using (SolidBrush brEmerald = new SolidBrush(Color.FromArgb(52, 211, 153)))
                     using (SolidBrush brBadgeBg = new SolidBrush(Color.FromArgb(30, 41, 59)))
                     using (Pen penBadge = new Pen(Color.FromArgb(16, 185, 129), 1.5f))
                     {
-                        g.DrawString("PowerLockGuard v2.0", fontBrand, brWhite, 100, 60);
+                        g.DrawString("PowerLockGuard v1.0.0", fontBrand, brWhite, 100, 60);
 
                         Rectangle badgeRect = new Rectangle(445, 68, 145, 28);
                         g.FillRectangle(brBadgeBg, badgeRect);
                         g.DrawRectangle(penBadge, badgeRect);
                         g.DrawString(tag, fontBadge, brEmerald, 453, 72);
+
+                        g.DrawString("GMK Solution (gmksolution.com)", fontCredit, brEmerald, 610, 72);
 
                         g.DrawString(headline, fontHead, brWhite, 100, 120);
                         g.DrawString(subheadline, fontSub, brMuted, 100, 185);
