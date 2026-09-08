@@ -1035,7 +1035,7 @@ namespace PowerLockGuard
             grpTelemetry.Controls.Add(btnRefreshProcesses);
 
             LinkLabel lnkAboutWatchdog = new LinkLabel();
-            lnkAboutWatchdog.Text = "Developed by GMK Solution (gmksolution.com) • Open Source & Store Ready";
+            lnkAboutWatchdog.Text = "PowerLockGuard v1.0.0 • Developed by GMK Solution (gmksolution.com)";
             lnkAboutWatchdog.Location = new Point(25, 395);
             lnkAboutWatchdog.Size = new Size(490, 25);
             lnkAboutWatchdog.TextAlign = ContentAlignment.MiddleCenter;

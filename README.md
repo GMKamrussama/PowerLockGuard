@@ -124,10 +124,33 @@ Build.bat
 ```
 Uses the built-in Windows C# compiler (`csc.exe`) to compile `PowerLockGuard.exe` with embedded multi-resolution icon in under 2 seconds.
 
+
 ### Visual Studio / MSBuild
 ```cmd
 msbuild PowerLockGuard.csproj /p:Configuration=Release
 ```
+
+---
+
+## 🏷️ GitHub Repository SEO & Discoverability Setup
+
+When configuring your GitHub repository settings (`https://github.com/<org>/PowerLockGuard`), use these optimized values for maximum search visibility across GitHub, Google, and Bing:
+
+| Setting | Recommended Value |
+|:---|:---|
+| **Repository Description** | `⚡ Smart auto-sleep & power management for developers, laptops & AI agents (Claude Code, Cursor, Aider, VS Code). Automatically sleeps or shuts down when coding tasks finish, plus instant deep sleep on charger unplug. Lightweight (~62 KB) & offline. Built by GMK Solution.` |
+| **Website** | `https://gmksolution.com` |
+| **Topics / Tags** *(Copy-paste into Topics)* | `ai-agents`, `claude-code`, `cursor-ai`, `developer-tools`, `auto-sleep`, `auto-shutdown`, `power-management`, `battery-saver`, `sleep-timer`, `windows-utility`, `gmk-solution`, `csharp`, `winforms`, `deep-sleep`, `laptop`, `standby`, `dev-tools`, `offline-first`, `productivity`, `workstation` |
+
+---
+
+## 🛒 Microsoft Store Packaging & SEO Metadata
+
+Everything required to publish on the **Microsoft Partner Center** is prepared and optimized:
+- 📋 **Full Store SEO Listing Data:** [`StorePackaging/MICROSOFT_STORE_METADATA.md`](StorePackaging/MICROSOFT_STORE_METADATA.md) *(Title, Short Description, Full Description, 7 Search Keywords, Feature Bullets, Release Notes)*
+- 📖 **Step-by-Step Submission Guide:** [`StorePackaging/MICROSOFT_STORE_GUIDE.md`](StorePackaging/MICROSOFT_STORE_GUIDE.md)
+- 🖼️ **1080p Promotional Store Showcase Images:** [`StorePackaging/assets/`](StorePackaging/assets/)
+- 📦 **Appx / MSIX Package Manifest:** [`StorePackaging/Package.appxmanifest`](StorePackaging/Package.appxmanifest)
 
 ---
 
@@ -188,7 +211,8 @@ msbuild PowerLockGuard.csproj /p:Configuration=Release
 ## 🛒 মাইক্রোসফট স্টোরে পাবলিশ করার গাইড
 
 মাইক্রোসফট পার্টনার সেন্টারে অ্যাপটি সহজে পাবলিশ করার জন্য বিস্তারিত গাইড ও মেনিফেস্ট প্রস্তুত আছে:
-- 📄 নির্দেশিকা: [`StorePackaging/MICROSOFT_STORE_GUIDE.md`](StorePackaging/MICROSOFT_STORE_GUIDE.md)
+- 📋 **সম্পূর্ণ এসইও মেটাডাটা ও কি-ওয়ার্ড তালিকা:** [`StorePackaging/MICROSOFT_STORE_METADATA.md`](StorePackaging/MICROSOFT_STORE_METADATA.md)
+- 📄 নির্দেশিকা ও পাবলিশিং স্টেপস: [`StorePackaging/MICROSOFT_STORE_GUIDE.md`](StorePackaging/MICROSOFT_STORE_GUIDE.md)
 - 🖼️ মাইক্রোসফট স্টোর ১৯২০x১০৮০ শোকেস প্রমোশনাল ইমেজ: [`StorePackaging/assets/`](StorePackaging/assets/)
 - 📦 MSIX Manifest: [`StorePackaging/Package.appxmanifest`](StorePackaging/Package.appxmanifest)
 
