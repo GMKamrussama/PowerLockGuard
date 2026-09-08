@@ -144,15 +144,6 @@ When configuring your GitHub repository settings (`https://github.com/<org>/Powe
 
 ---
 
-## 🛒 Microsoft Store Packaging & SEO Metadata
-
-Everything required to publish on the **Microsoft Partner Center** is prepared and optimized:
-- 📋 **Full Store SEO Listing Data:** [`StorePackaging/MICROSOFT_STORE_METADATA.md`](StorePackaging/MICROSOFT_STORE_METADATA.md) *(Title, Short Description, Full Description, 7 Search Keywords, Feature Bullets, Release Notes)*
-- 📖 **Step-by-Step Submission Guide:** [`StorePackaging/MICROSOFT_STORE_GUIDE.md`](StorePackaging/MICROSOFT_STORE_GUIDE.md)
-- 🖼️ **1080p Promotional Store Showcase Images:** [`StorePackaging/assets/`](StorePackaging/assets/)
-- 📦 **Appx / MSIX Package Manifest:** [`StorePackaging/Package.appxmanifest`](StorePackaging/Package.appxmanifest)
-
----
 
 <a name="-বাংলা-ভার্সন-bengali"></a>
 # 🇧🇩 বাংলা ভার্সন (Bengali Documentation)
@@ -208,15 +199,6 @@ Everything required to publish on the **Microsoft Partner Center** is prepared a
 
 ---
 
-## 🛒 মাইক্রোসফট স্টোরে পাবলিশ করার গাইড
-
-মাইক্রোসফট পার্টনার সেন্টারে অ্যাপটি সহজে পাবলিশ করার জন্য বিস্তারিত গাইড ও মেনিফেস্ট প্রস্তুত আছে:
-- 📋 **সম্পূর্ণ এসইও মেটাডাটা ও কি-ওয়ার্ড তালিকা:** [`StorePackaging/MICROSOFT_STORE_METADATA.md`](StorePackaging/MICROSOFT_STORE_METADATA.md)
-- 📄 নির্দেশিকা ও পাবলিশিং স্টেপস: [`StorePackaging/MICROSOFT_STORE_GUIDE.md`](StorePackaging/MICROSOFT_STORE_GUIDE.md)
-- 🖼️ মাইক্রোসফট স্টোর ১৯২০x১০৮০ শোকেস প্রমোশনাল ইমেজ: [`StorePackaging/assets/`](StorePackaging/assets/)
-- 📦 MSIX Manifest: [`StorePackaging/Package.appxmanifest`](StorePackaging/Package.appxmanifest)
-
----
 
 ## 📄 লাইসেন্স (License)
 
