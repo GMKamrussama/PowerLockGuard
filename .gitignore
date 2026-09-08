@@ -11,3 +11,6 @@ obj/
 
 # Keep compiled release exe or ignore as preferred in open-source
 # PowerLockGuard.exe is kept if distributing standalone releases
+
+# Microsoft Store submission assets & internal packaging drafts
+StorePackaging/
