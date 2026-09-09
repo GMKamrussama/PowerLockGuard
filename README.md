@@ -7,8 +7,7 @@
 <p align="center">
   <a href="#-english"><b>English 🇬🇧</b></a> •
   <a href="#-বাংলা-ভার্সন-bengali"><b>বাংলা 🇧🇩</b></a> •
-  <a href="#-github-topics--tags"><b>GitHub Topics 🏷️</b></a> •
-  <a href="#-release-notes"><b>Release Notes 📦</b></a>
+  <a href="https://github.com/GMKamrussama/PowerLockGuard/releases/latest"><b>Latest Release 📦</b></a>
 </p>
 
 <p align="center">
@@ -63,12 +62,12 @@ When electricity suddenly goes out, your WiFi router shuts down immediately. If 
 
 | 🤖 AI Agent & Work Watchdog (Live Telemetry & Red Stuck Alert) | 🛡️ Instant Charger Unplug Guard |
 |:---:|:---:|
-| <img src="docs/screenshots/01_work_watchdog.png" width="450" alt="Work Watchdog UI" /> | <img src="docs/screenshots/02_charger_guard.png" width="450" alt="Charger Guard UI" /> |
+| <img src="docs/screenshots/01_work_watchdog_v1.png" width="450" alt="Work Watchdog UI" /> | <img src="docs/screenshots/02_charger_guard_v1.png" width="450" alt="Charger Guard UI" /> |
 | *Real-time process table, red stuck process highlight, emerald active agents & colorful gradient meter* | *Triggers Instant S3 Deep Sleep the millisecond charger cord is disconnected* |
 
 | ⏰ 30-Second Audible Safety Countdown Dialog | ⚙️ Settings, Windows Startup & Live Event Log |
 |:---:|:---:|
-| <img src="docs/screenshots/04_safety_countdown.png" width="450" alt="Safety Countdown Dialog" /> | <img src="docs/screenshots/03_settings_history.png" width="450" alt="Settings & Logs" /> |
+| <img src="docs/screenshots/04_safety_countdown_v1.png" width="450" alt="Safety Countdown Dialog" /> | <img src="docs/screenshots/03_settings_history_v1.png" width="450" alt="Settings & Logs" /> |
 | *Clear countdown with audible chime before action. Press Esc or Cancel anytime* | *1-Click Windows Startup toggle, sound preferences, and exact audit history* |
 
 ---
@@ -187,25 +186,6 @@ Build.bat
 
 ---
 
-<a name="-github-topics--tags"></a>
-## 🏷️ GitHub Topics & Tags
-When configuring your GitHub repository settings, add the following topics for maximum discoverability:
-
-```text
-ai-agents, claude-code, cursor-ide, power-management, auto-sleep, anti-theft, windows-utility, csharp, battery-saver, offline, developer-tools, charger-unplug-alarm, devops, task-automation, productivity
-```
-
----
-
-<a name="-release-notes"></a>
-## 📦 Release Assets & Verification (v1.0.0)
-
-| File | Size | SHA-256 Checksum |
-|:---|:---|:---|
-| **PowerLockGuard.exe** | ~90 KB | `9794F83EC1352D20D7065FA5E2BD14463E4F9059D6F0D231DE270722FC5C528B` |
-
----
-
 <a name="-বাংলা-ভার্সন-bengali"></a>
 # 🇧🇩 বাংলা ভার্সন (Bengali Documentation)
 
@@ -241,12 +221,12 @@ ai-agents, claude-code, cursor-ide, power-management, auto-sleep, anti-theft, wi
 
 | 🤖 এআই এজেন্ট ও লাইভ প্রসেস টেলিমেট্রি | 🛡️ চার্জার আনপ্লাগ ডিপ স্লিপ গার্ড |
 |:---:|:---:|
-| <img src="docs/screenshots/01_work_watchdog.png" width="450" alt="Work Watchdog" /> | <img src="docs/screenshots/02_charger_guard.png" width="450" alt="Charger Guard" /> |
+| <img src="docs/screenshots/01_work_watchdog_v1.png" width="450" alt="Work Watchdog" /> | <img src="docs/screenshots/02_charger_guard_v1.png" width="450" alt="Charger Guard" /> |
 | *আটকে থাকা প্রসেস লাল রঙে হাইলাইট, সক্রিয় কাজ সবুজ রঙে এবং রেসপনসিভ টেবিল* | *চার্জার প্লাগ আউট হওয়ার সাথে সাথে মিলিসেকেন্ডে ডিপ স্লিপ* |
 
 | ⏰ ৩০ সেকেন্ড অডিও সেফটি কাউন্টডাউন | ⚙️ সেটিংস ও অ্যাক্টিভিটি ইভেন্ট লগ |
 |:---:|:---:|
-| <img src="docs/screenshots/04_safety_countdown.png" width="450" alt="Safety Countdown" /> | <img src="docs/screenshots/03_settings_history.png" width="450" alt="Settings & Logs" /> |
+| <img src="docs/screenshots/04_safety_countdown_v1.png" width="450" alt="Safety Countdown" /> | <img src="docs/screenshots/03_settings_history_v1.png" width="450" alt="Settings & Logs" /> |
 | *স্লিপের আগে অ্যালার্ট ও বিপ। বাতিল করতে Esc চাপুন* | *উইন্ডোজ অটো-স্টার্ট অপশন এবং প্রতি সেকেন্ডের নির্ভুল লগ* |
 
 ---
