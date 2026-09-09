@@ -6,7 +6,7 @@ set CSC=%CSC_64%
 if not exist "%CSC%" set CSC=%CSC_32%
 
 echo Compiling PowerLockGuard v1.0.0...
-"%CSC%" /target:winexe /optimize+ /win32icon:app.ico /out:PowerLockGuard.exe /reference:System.dll,System.Windows.Forms.dll,System.Drawing.dll PowerLockGuard.cs
+"%CSC%" /target:winexe /optimize+ /win32icon:app.ico /out:PowerLockGuard.exe /reference:System.dll,System.Windows.Forms.dll,System.Drawing.dll,System.Core.dll PowerLockGuard.cs
 
 if %ERRORLEVEL% EQU 0 (
     echo.
@@ -15,4 +15,4 @@ if %ERRORLEVEL% EQU 0 (
     echo.
     echo [FAILED] Compilation failed!
 )
-pause
+if not "%1"=="--no-pause" pause

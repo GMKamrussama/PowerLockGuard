@@ -79,9 +79,11 @@ namespace PowerLockGuard
         // Work Watchdog (Auto-Sleep / Shutdown on Dev & Agent Completion)
         public bool WatchdogEnabled = false;
         public string WatchdogAction = "Sleep"; // "Sleep", "Shutdown", "Hibernate"
-        public string WatchdogMode = "AutoDev"; // "AutoDev", "SpecificProcess", "SelectedPID"
+        public string WatchdogMode = "AgentsAndBuilds"; // "AgentsAndBuilds", "AIAgentsOnly", "AllDevTools", "SpecificProcess"
         public string WatchdogTargetProcess = "claude"; // Process name for SpecificProcess
         public int WatchdogGraceMinutes = 3; // Consecutive idle minutes before action (1, 2, 3, 5, 10)
+        public double WatchdogIdleThreshold = 3.5; // CPU % threshold to consider idle (1.5, 2.5, 3.5, 5.0, 8.0, 10.0)
+        public bool AutoKillStuckAgentsOnSleep = true; // Auto terminate runaway/stuck tasks before sleep
 
         // General
         public bool StartWithWindows = false;
@@ -111,6 +113,8 @@ namespace PowerLockGuard
                     sw.WriteLine("WatchdogMode=" + WatchdogMode);
                     sw.WriteLine("WatchdogTargetProcess=" + WatchdogTargetProcess);
                     sw.WriteLine("WatchdogGraceMinutes=" + WatchdogGraceMinutes);
+                    sw.WriteLine("WatchdogIdleThreshold=" + WatchdogIdleThreshold.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture));
+                    sw.WriteLine("AutoKillStuckAgentsOnSleep=" + AutoKillStuckAgentsOnSleep);
                     sw.WriteLine("StartWithWindows=" + StartWithWindows);
                     sw.WriteLine("PlayAlertSound=" + PlayAlertSound);
                     sw.WriteLine("CountdownSeconds=" + CountdownSeconds);
@@ -147,6 +151,15 @@ namespace PowerLockGuard
                             else if (key == "WatchdogMode") s.WatchdogMode = val;
                             else if (key == "WatchdogTargetProcess") s.WatchdogTargetProcess = val;
                             else if (key == "WatchdogGraceMinutes") int.TryParse(val, out s.WatchdogGraceMinutes);
+                            else if (key == "WatchdogIdleThreshold")
+                            {
+                                double d;
+                                if (double.TryParse(val, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out d))
+                                {
+                                    s.WatchdogIdleThreshold = d;
+                                }
+                            }
+                            else if (key == "AutoKillStuckAgentsOnSleep") bool.TryParse(val, out s.AutoKillStuckAgentsOnSleep);
                             else if (key == "StartWithWindows") bool.TryParse(val, out s.StartWithWindows);
                             else if (key == "PlayAlertSound") bool.TryParse(val, out s.PlayAlertSound);
                             else if (key == "CountdownSeconds") int.TryParse(val, out s.CountdownSeconds);
@@ -155,6 +168,13 @@ namespace PowerLockGuard
                 }
             }
             catch { }
+
+            // Migration / fallback for legacy AutoDev mode
+            if (s.WatchdogMode == "AutoDev" || string.IsNullOrEmpty(s.WatchdogMode))
+            {
+                s.WatchdogMode = "AgentsAndBuilds";
+            }
+
             return s;
         }
     }
@@ -200,36 +220,219 @@ namespace PowerLockGuard
     }
     #endregion
 
+    #region User Inactivity Helper
+    public static class UserInactivityDetector
+    {
+        [StructLayout(LayoutKind.Sequential)]
+        private struct LASTINPUTINFO
+        {
+            public uint cbSize;
+            public uint dwTime;
+        }
+
+        [DllImport("user32.dll")]
+        private static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+
+        public static int GetUserIdleSeconds()
+        {
+            try
+            {
+                LASTINPUTINFO lii = new LASTINPUTINFO();
+                lii.cbSize = (uint)Marshal.SizeOf(lii);
+                if (GetLastInputInfo(ref lii))
+                {
+                    uint idleMs = (uint)Environment.TickCount - lii.dwTime;
+                    return (int)(idleMs / 1000);
+                }
+            }
+            catch { }
+            return 0;
+        }
+    }
+    #endregion
+
+    #region Custom UI Controls & Process Metric Item
+    public class DoubleBufferedListView : ListView
+    {
+        public DoubleBufferedListView()
+        {
+            this.SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
+            this.UpdateStyles();
+        }
+    }
+
+    public class ModernActivityMeter : Control
+    {
+        private double cpuPercent = 0.0;
+        private double idleThreshold = 3.5;
+        private bool hasActiveWork = false;
+        private double bufferProgress = 0.0;
+        private string statusText = "";
+
+        public ModernActivityMeter()
+        {
+            this.SetStyle(ControlStyles.UserPaint |
+                          ControlStyles.AllPaintingInWmPaint |
+                          ControlStyles.OptimizedDoubleBuffer |
+                          ControlStyles.ResizeRedraw, true);
+            this.Height = 22;
+            this.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+        }
+
+        public void UpdateState(double cpu, double threshold, bool activeWork, double bufferPct, string text)
+        {
+            this.cpuPercent = cpu;
+            this.idleThreshold = threshold;
+            this.hasActiveWork = activeWork;
+            this.bufferProgress = Math.Min(1.0, Math.Max(0.0, bufferPct));
+            this.statusText = text;
+            this.Invalidate();
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            Graphics g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            Rectangle rect = this.ClientRectangle;
+            if (rect.Width <= 4 || rect.Height <= 4) return;
+
+            // Background Track: soft slate rounded container
+            using (GraphicsPath bgPath = GetRoundedRect(rect, 4))
+            using (SolidBrush bgBrush = new SolidBrush(Color.FromArgb(241, 245, 249)))
+            using (Pen borderPen = new Pen(Color.FromArgb(203, 213, 225), 1f))
+            {
+                g.FillPath(bgBrush, bgPath);
+                g.DrawPath(borderPen, bgPath);
+            }
+
+            int fillWidth = 0;
+            Color colStart, colEnd;
+
+            if (hasActiveWork)
+            {
+                double pct = Math.Min(100.0, Math.Max(0.0, cpuPercent));
+                fillWidth = (int)((rect.Width - 4) * (pct / 100.0));
+                if (pct > 0.0 && fillWidth < 8) fillWidth = 8;
+
+                if (cpuPercent >= 15.0)
+                {
+                    // Alert / High / Stuck: Vibrant Orange-Red
+                    colStart = Color.FromArgb(245, 158, 11);
+                    colEnd = Color.FromArgb(239, 68, 68);
+                }
+                else
+                {
+                    // Active Work: Vibrant Emerald to Teal
+                    colStart = Color.FromArgb(16, 185, 129);
+                    colEnd = Color.FromArgb(13, 148, 136);
+                }
+            }
+            else
+            {
+                fillWidth = (int)((rect.Width - 4) * bufferProgress);
+                if (bufferProgress > 0.0 && fillWidth < 8) fillWidth = 8;
+
+                // Idle Countdown Buffer: Vibrant Blue to Indigo
+                colStart = Color.FromArgb(59, 130, 246);
+                colEnd = Color.FromArgb(99, 102, 241);
+            }
+
+            if (fillWidth > 4)
+            {
+                Rectangle fillRect = new Rectangle(rect.X + 2, rect.Y + 2, Math.Min(fillWidth, rect.Width - 4), rect.Height - 4);
+                using (GraphicsPath fillPath = GetRoundedRect(fillRect, 3))
+                using (LinearGradientBrush lgb = new LinearGradientBrush(fillRect, colStart, colEnd, LinearGradientMode.Horizontal))
+                {
+                    g.FillPath(lgb, fillPath);
+                }
+            }
+
+            if (!string.IsNullOrEmpty(statusText))
+            {
+                Color textColor = (fillWidth > (rect.Width / 2)) ? Color.White : Color.FromArgb(30, 41, 59);
+                TextRenderer.DrawText(g, statusText, this.Font, rect, textColor,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine);
+            }
+        }
+
+        private static GraphicsPath GetRoundedRect(Rectangle bounds, int radius)
+        {
+            int diameter = radius * 2;
+            Size size = new Size(diameter, diameter);
+            Rectangle arc = new Rectangle(bounds.Location, size);
+            GraphicsPath path = new GraphicsPath();
+
+            if (radius <= 0)
+            {
+                path.AddRectangle(bounds);
+                return path;
+            }
+
+            path.AddArc(arc, 180, 90);
+            arc.X = bounds.Right - diameter;
+            path.AddArc(arc, 270, 90);
+            arc.Y = bounds.Bottom - diameter;
+            path.AddArc(arc, 0, 90);
+            arc.X = bounds.Left;
+            path.AddArc(arc, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+    }
+
+    public class ProcessMetricItem
+    {
+        public int Pid { get; set; }
+        public string Name { get; set; }
+        public double CpuPercent { get; set; }
+        public double MemoryMb { get; set; }
+        public bool IsActive { get; set; }
+        public bool IsIgnored { get; set; }
+        public bool IsStuck { get; set; }
+    }
+    #endregion
+
     #region Process & Task Watchdog Engine
     public class WorkWatchdogEngine
     {
-        // Known Dev & AI Agent process signatures
-        public static readonly string[] KnownDevProcessNames = new string[]
+        // 1. Dedicated AI Coding Agents & Autonomous Assistants
+        public static readonly string[] AIAgentPatterns = new string[]
         {
-            // AI Agents & CLI Tools
-            "claude", "aider", "codex", "copilot", "gemini", "antigravity", "cline", "roo-cline",
-            // Popular AI & Dev IDEs
-            "cursor", "code", "windsurf", "devenv", "idea64", "pycharm64", "webstorm64", "rider64", "sublime_text",
-            // Runtimes, Compilers & Build Tools
-            "node", "python", "pythonw", "cargo", "rustc", "dotnet", "javac", "java", "gradlew", "tsc", "git",
-            // Terminals
-            "windowsterminal", "powershell", "pwsh", "wsl", "cmd"
+            "claude", "aider", "codex", "copilot", "gemini", "cline", "roo-cline", "continue", "agent"
+        };
+
+        // 2. Active Compilers, Runtimes, Interpreters & Build Systems
+        public static readonly string[] BuildAndRuntimePatterns = new string[]
+        {
+            "node", "python", "pythonw", "cargo", "rustc", "dotnet", "javac", "java", "gradlew", "tsc", "git"
+        };
+
+        // 3. Heavy IDEs & Code Editors (Background renderers, extensions)
+        public static readonly string[] IDEPatterns = new string[]
+        {
+            "cursor", "code", "antigravity", "windsurf", "devenv", "idea64", "pycharm64", "webstorm64", "rider64", "sublime_text"
         };
 
         private Dictionary<int, TimeSpan> lastCpuTimes = new Dictionary<int, TimeSpan>();
+        private Dictionary<int, int> processHighCpuDuration = new Dictionary<int, int>();
         private DateTime lastSampleTime = DateTime.UtcNow;
+        private HashSet<int> ignoredPids = new HashSet<int>();
+        private HashSet<string> ignoredNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         public double LastSampledCpuPercent { get; private set; }
         public int MonitoredProcessCount { get; private set; }
         public string MonitoredProcessSummary { get; private set; }
         public bool HasActiveWork { get; private set; }
         public int ConsecutiveIdleSeconds { get; private set; }
+        public List<ProcessMetricItem> CurrentMetrics { get; private set; }
 
         public WorkWatchdogEngine()
         {
             MonitoredProcessSummary = "Initializing...";
             HasActiveWork = false;
             ConsecutiveIdleSeconds = 0;
+            CurrentMetrics = new List<ProcessMetricItem>();
         }
 
         public void ResetIdleTimer()
@@ -237,32 +440,49 @@ namespace PowerLockGuard
             ConsecutiveIdleSeconds = 0;
         }
 
-        public void Poll(string mode, string targetCustomProcess, int tickIntervalMs)
+        public void ToggleIgnoreProcess(int pid, string name)
+        {
+            if (ignoredPids.Contains(pid))
+            {
+                ignoredPids.Remove(pid);
+                if (!string.IsNullOrEmpty(name)) ignoredNames.Remove(name);
+            }
+            else
+            {
+                ignoredPids.Add(pid);
+                if (!string.IsNullOrEmpty(name)) ignoredNames.Add(name);
+            }
+        }
+
+        public bool IsProcessIgnored(int pid, string name)
+        {
+            if (ignoredPids.Contains(pid)) return true;
+            if (!string.IsNullOrEmpty(name) && ignoredNames.Contains(name)) return true;
+            return false;
+        }
+
+        public void ClearIgnored()
+        {
+            ignoredPids.Clear();
+            ignoredNames.Clear();
+        }
+
+        public void Poll(string mode, string targetCustomProcess, int tickIntervalMs, double idleThresholdCpu)
         {
             List<Process> targetProcesses = new List<Process>();
+            List<string> searchPatterns = new List<string>();
 
             try
             {
-                if (mode == "AutoDev")
+                if (mode == "AIAgentsOnly")
                 {
-                    // Scan all running processes for known dev agents & tools
-                    Process[] all = Process.GetProcesses();
-                    foreach (Process p in all)
-                    {
-                        try
-                        {
-                            string pName = p.ProcessName.ToLowerInvariant();
-                            foreach (string devPattern in KnownDevProcessNames)
-                            {
-                                if (pName == devPattern || pName.Contains(devPattern))
-                                {
-                                    targetProcesses.Add(p);
-                                    break;
-                                }
-                            }
-                        }
-                        catch { }
-                    }
+                    searchPatterns.AddRange(AIAgentPatterns);
+                }
+                else if (mode == "AllDevTools")
+                {
+                    searchPatterns.AddRange(AIAgentPatterns);
+                    searchPatterns.AddRange(BuildAndRuntimePatterns);
+                    searchPatterns.AddRange(IDEPatterns);
                 }
                 else if (mode == "SpecificProcess")
                 {
@@ -285,6 +505,32 @@ namespace PowerLockGuard
                         }
                     }
                 }
+                else // "AgentsAndBuilds" (Recommended Default)
+                {
+                    searchPatterns.AddRange(AIAgentPatterns);
+                    searchPatterns.AddRange(BuildAndRuntimePatterns);
+                }
+
+                if (mode != "SpecificProcess" && searchPatterns.Count > 0)
+                {
+                    Process[] all = Process.GetProcesses();
+                    foreach (Process p in all)
+                    {
+                        try
+                        {
+                            string pName = p.ProcessName.ToLowerInvariant();
+                            foreach (string pat in searchPatterns)
+                            {
+                                if (pName == pat || pName.Contains(pat))
+                                {
+                                    targetProcesses.Add(p);
+                                    break;
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+                }
             }
             catch { }
 
@@ -295,85 +541,188 @@ namespace PowerLockGuard
             if (elapsedSeconds <= 0.1) elapsedSeconds = tickIntervalMs / 1000.0;
             lastSampleTime = now;
 
-            if (targetProcesses.Count == 0)
-            {
-                // No monitored processes are running
-                LastSampledCpuPercent = 0.0;
-                MonitoredProcessSummary = (mode == "AutoDev") ? "No dev tools/agents currently active" : "Target process not running";
-                HasActiveWork = false;
-                ConsecutiveIdleSeconds += (int)Math.Max(1, Math.Round(elapsedSeconds));
-                lastCpuTimes.Clear();
-                return;
-            }
-
-            // Calculate CPU utilization across target processes
-            TimeSpan totalCpuDelta = TimeSpan.Zero;
+            int procCount = Math.Max(1, Environment.ProcessorCount);
             Dictionary<int, TimeSpan> currentCpuTimes = new Dictionary<int, TimeSpan>();
-            List<string> activeNames = new List<string>();
+            List<ProcessMetricItem> metrics = new List<ProcessMetricItem>();
+            double totalActiveCpuPercent = 0.0;
+            int activeCount = 0;
 
             foreach (Process p in targetProcesses)
             {
                 try
                 {
+                    int pid = p.Id;
+                    string name = p.ProcessName;
                     TimeSpan curCpu = p.TotalProcessorTime;
-                    currentCpuTimes[p.Id] = curCpu;
+                    currentCpuTimes[pid] = curCpu;
 
-                    if (lastCpuTimes.ContainsKey(p.Id))
+                    double pCpu = 0.0;
+                    if (lastCpuTimes.ContainsKey(pid))
                     {
-                        TimeSpan delta = curCpu - lastCpuTimes[p.Id];
+                        TimeSpan delta = curCpu - lastCpuTimes[pid];
                         if (delta > TimeSpan.Zero)
                         {
-                            totalCpuDelta += delta;
+                            pCpu = (delta.TotalSeconds / (elapsedSeconds * procCount)) * 100.0;
+                            if (pCpu > 100.0) pCpu = 100.0;
+                            if (pCpu < 0.0) pCpu = 0.0;
                         }
                     }
 
-                    if (!activeNames.Contains(p.ProcessName))
+                    double memMb = 0.0;
+                    try
                     {
-                        activeNames.Add(p.ProcessName);
+                        memMb = p.WorkingSet64 / (1024.0 * 1024.0);
                     }
+                    catch { }
+
+                    bool ignored = IsProcessIgnored(pid, name);
+                    bool isActive = (pCpu >= 0.2);
+                    bool isHighCpu = (pCpu >= 12.0);
+
+                    int highSecs = 0;
+                    if (isHighCpu)
+                    {
+                        if (processHighCpuDuration.ContainsKey(pid))
+                        {
+                            highSecs = processHighCpuDuration[pid] + (int)Math.Max(1, elapsedSeconds);
+                            processHighCpuDuration[pid] = highSecs;
+                        }
+                        else
+                        {
+                            highSecs = (int)Math.Max(1, elapsedSeconds);
+                            processHighCpuDuration[pid] = highSecs;
+                        }
+                    }
+                    else
+                    {
+                        processHighCpuDuration.Remove(pid);
+                    }
+
+                    // A process is flagged as stuck if it pegs >= 20% CPU or maintains >= 12% CPU for 15+ seconds
+                    bool isStuck = (pCpu >= 20.0) || (isHighCpu && highSecs >= 15);
+
+                    if (!ignored)
+                    {
+                        totalActiveCpuPercent += pCpu;
+                        if (isActive) activeCount++;
+                    }
+
+                    ProcessMetricItem item = new ProcessMetricItem();
+                    item.Pid = pid;
+                    item.Name = name;
+                    item.CpuPercent = pCpu;
+                    item.MemoryMb = memMb;
+                    item.IsActive = isActive;
+                    item.IsIgnored = ignored;
+                    item.IsStuck = isStuck;
+
+                    metrics.Add(item);
                 }
                 catch { }
             }
 
             lastCpuTimes = currentCpuTimes;
 
-            // Compute CPU% normalized by processor count
-            int procCount = Math.Max(1, Environment.ProcessorCount);
-            double cpuPercent = (totalCpuDelta.TotalSeconds / (elapsedSeconds * procCount)) * 100.0;
-            if (cpuPercent > 100.0) cpuPercent = 100.0;
-            if (cpuPercent < 0.0) cpuPercent = 0.0;
-            LastSampledCpuPercent = cpuPercent;
+            // Sort metrics: Non-ignored first, Stuck first (red alert), then Active, then highest CPU, then highest RAM
+            metrics.Sort((a, b) =>
+            {
+                if (a.IsIgnored != b.IsIgnored) return a.IsIgnored.CompareTo(b.IsIgnored);
+                if (a.IsStuck != b.IsStuck) return b.IsStuck.CompareTo(a.IsStuck);
+                if (a.IsActive != b.IsActive) return b.IsActive.CompareTo(a.IsActive);
+                int cmpCpu = b.CpuPercent.CompareTo(a.CpuPercent);
+                if (cmpCpu != 0) return cmpCpu;
+                return b.MemoryMb.CompareTo(a.MemoryMb);
+            });
 
-            // Summary text
-            if (activeNames.Count > 0)
-            {
-                string names = string.Join(", ", activeNames.ToArray());
-                if (names.Length > 45) names = names.Substring(0, 42) + "...";
-                MonitoredProcessSummary = string.Format("{0} tasks ({1})", activeNames.Count, names);
-            }
-            else
-            {
-                MonitoredProcessSummary = targetProcesses.Count + " processes";
-            }
+            CurrentMetrics = metrics;
 
-            // Work is active if CPU > 1.8% (compilation, agent coding, active script)
-            // If CPU <= 1.8%, consider idle
-            if (cpuPercent >= 1.8)
+            if (totalActiveCpuPercent > 100.0) totalActiveCpuPercent = 100.0;
+            if (totalActiveCpuPercent < 0.0) totalActiveCpuPercent = 0.0;
+            LastSampledCpuPercent = totalActiveCpuPercent;
+
+            if (targetProcesses.Count == 0)
             {
-                HasActiveWork = true;
-                ConsecutiveIdleSeconds = 0; // Reset idle timer since active work is happening
-            }
-            else
-            {
+                MonitoredProcessSummary = (mode == "SpecificProcess") ? "Target process not running" : "No matching dev processes running";
                 HasActiveWork = false;
                 ConsecutiveIdleSeconds += (int)Math.Max(1, Math.Round(elapsedSeconds));
             }
+            else
+            {
+                MonitoredProcessSummary = string.Format("{0} tasks ({1} active, {2:F1}% CPU)",
+                    targetProcesses.Count, activeCount, totalActiveCpuPercent);
 
-            // Dispose process objects
+                if (totalActiveCpuPercent >= idleThresholdCpu)
+                {
+                    HasActiveWork = true;
+                    ConsecutiveIdleSeconds = 0; // Active work in progress
+                }
+                else
+                {
+                    HasActiveWork = false;
+                    ConsecutiveIdleSeconds += (int)Math.Max(1, Math.Round(elapsedSeconds));
+                }
+            }
+
+            // Dispose process objects safely
             foreach (Process p in targetProcesses)
             {
                 try { p.Dispose(); } catch { }
             }
+        }
+
+        public List<string> TerminateStuckProcesses()
+        {
+            List<string> killed = new List<string>();
+            List<ProcessMetricItem> snapshot = CurrentMetrics;
+            if (snapshot == null) return killed;
+
+            for (int i = 0; i < snapshot.Count; i++)
+            {
+                ProcessMetricItem m = snapshot[i];
+                if ((m.IsStuck || m.CpuPercent >= 15.0) && !m.IsIgnored)
+                {
+                    try
+                    {
+                        Process p = Process.GetProcessById(m.Pid);
+                        p.Kill();
+                        p.Dispose();
+                        killed.Add(string.Format("Terminated stuck process '{0}' (PID {1}, {2:F1}% CPU)", m.Name, m.Pid, m.CpuPercent));
+                    }
+                    catch (Exception ex)
+                    {
+                        killed.Add(string.Format("Failed to terminate '{0}' (PID {1}): {2}", m.Name, m.Pid, ex.Message));
+                    }
+                }
+            }
+            return killed;
+        }
+
+        public string AutoKillRunawayIfUserAway(int maxSeconds)
+        {
+            List<ProcessMetricItem> snapshot = CurrentMetrics;
+            if (snapshot == null) return null;
+
+            for (int i = 0; i < snapshot.Count; i++)
+            {
+                ProcessMetricItem m = snapshot[i];
+                if (!m.IsIgnored && processHighCpuDuration.ContainsKey(m.Pid))
+                {
+                    int duration = processHighCpuDuration[m.Pid];
+                    if (duration >= maxSeconds)
+                    {
+                        try
+                        {
+                            Process p = Process.GetProcessById(m.Pid);
+                            p.Kill();
+                            p.Dispose();
+                            processHighCpuDuration.Remove(m.Pid);
+                            return string.Format("Auto-killed runaway process '{0}' (PID {1}, {2:F1}% CPU) pegged for {3}s.", m.Name, m.Pid, m.CpuPercent, duration);
+                        }
+                        catch { }
+                    }
+                }
+            }
+            return null;
         }
     }
     #endregion
@@ -456,7 +805,7 @@ namespace PowerLockGuard
 
             // Cancel Button (Large, prominent)
             btnCancel = new Button();
-            btnCancel.Text = "❌ CANCEL (বাতিল করুন - I'm still working)";
+            btnCancel.Text = "❌ CANCEL (I'm Still Working)";
             btnCancel.Font = new Font("Segoe UI", 11f, FontStyle.Bold);
             btnCancel.BackColor = Color.FromArgb(239, 68, 68); // Red
             btnCancel.ForeColor = Color.White;
@@ -582,12 +931,18 @@ namespace PowerLockGuard
         private ComboBox cmbWatchdogAction;
         private ComboBox cmbWatchdogMode;
         private ComboBox cmbWatchdogGrace;
+        private ComboBox cmbWatchdogThreshold;
         private TextBox txtCustomProcess;
+        private CheckBox chkAutoKillStuck;
         private Label lblWatchdogActivity;
         private Label lblWatchdogCpu;
         private Label lblWatchdogTimer;
-        private ProgressBar prgActivity;
+        private ModernActivityMeter activityMeter;
+        private DoubleBufferedListView lvwProcesses;
+        private Button btnIgnoreProcess;
+        private Button btnKillProcess;
         private Button btnRefreshProcesses;
+        private ContextMenuStrip menuProcesses;
 
         // --- Tab 3: Settings & Logs Controls ---
         private Panel tabSettings;
@@ -641,7 +996,7 @@ namespace PowerLockGuard
         private void InitializeUI()
         {
             this.Text = "PowerLockGuard v1.0.0 - Dev Work & Charger Guard";
-            this.ClientSize = new Size(540, 570);
+            this.ClientSize = new Size(640, 675);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
@@ -658,7 +1013,7 @@ namespace PowerLockGuard
             // 1. Top Header Banner (Fixed non-docked coordinates: Y = 0 to 70)
             pnlHeader = new Panel();
             pnlHeader.Location = new Point(0, 0);
-            pnlHeader.Size = new Size(540, 70);
+            pnlHeader.Size = new Size(640, 70);
             pnlHeader.BackColor = Color.FromArgb(15, 23, 42); // Dark slate #0f172a
             this.Controls.Add(pnlHeader);
 
@@ -693,13 +1048,13 @@ namespace PowerLockGuard
             // 2. Tab Navigation Bar (Fixed non-docked coordinates: Y = 70 to 112)
             pnlTabNav = new Panel();
             pnlTabNav.Location = new Point(0, 70);
-            pnlTabNav.Size = new Size(540, 42);
+            pnlTabNav.Size = new Size(640, 42);
             pnlTabNav.BackColor = Color.FromArgb(241, 245, 249);
             this.Controls.Add(pnlTabNav);
 
-            btnTabCharger = CreateTabButton("🛡️ Charger Guard", 0);
-            btnTabWatchdog = CreateTabButton("🤖 Work Watchdog", 1);
-            btnTabSettings = CreateTabButton("⚙️ Settings & Logs", 2);
+            btnTabCharger = CreateTabButton("🛡️ Charger Guard", 0, 0, 213);
+            btnTabWatchdog = CreateTabButton("🤖 Work Watchdog", 1, 213, 214);
+            btnTabSettings = CreateTabButton("⚙️ Settings & Logs", 2, 427, 213);
             btnTabSettings.UseMnemonic = false;
 
             btnTabCharger.Click += (s, e) => SwitchTab(0);
@@ -710,10 +1065,10 @@ namespace PowerLockGuard
             pnlTabNav.Controls.Add(btnTabWatchdog);
             pnlTabNav.Controls.Add(btnTabSettings);
 
-            // 3. Tab Container (Fixed non-docked coordinates: Y = 112 to 570, Height = 458)
+            // 3. Tab Container (Fixed non-docked coordinates: Y = 112 to 675, Height = 563)
             pnlTabContainer = new Panel();
             pnlTabContainer.Location = new Point(0, 112);
-            pnlTabContainer.Size = new Size(540, 458);
+            pnlTabContainer.Size = new Size(640, 563);
             pnlTabContainer.BackColor = Color.FromArgb(248, 250, 252);
             this.Controls.Add(pnlTabContainer);
 
@@ -728,12 +1083,12 @@ namespace PowerLockGuard
             this.FormClosing += MainForm_FormClosing;
         }
 
-        private Button CreateTabButton(string text, int index)
+        private Button CreateTabButton(string text, int index, int x, int width)
         {
             Button btn = new Button();
             btn.Text = text;
-            btn.Size = new Size(180, 41);
-            btn.Location = new Point(index * 180, 1);
+            btn.Size = new Size(width, 41);
+            btn.Location = new Point(x, 1);
             btn.FlatStyle = FlatStyle.Flat;
             btn.FlatAppearance.BorderSize = 0;
             btn.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
@@ -770,7 +1125,7 @@ namespace PowerLockGuard
             // Big Toggle Button
             btnToggleCharger = new Button();
             btnToggleCharger.Location = new Point(25, 15);
-            btnToggleCharger.Size = new Size(490, 56);
+            btnToggleCharger.Size = new Size(590, 56);
             btnToggleCharger.FlatStyle = FlatStyle.Flat;
             btnToggleCharger.FlatAppearance.BorderSize = 0;
             btnToggleCharger.Font = new Font("Segoe UI", 11.5f, FontStyle.Bold);
@@ -784,20 +1139,20 @@ namespace PowerLockGuard
             GroupBox grpStatus = new GroupBox();
             grpStatus.Text = " Charger && Power Status ";
             grpStatus.Location = new Point(25, 82);
-            grpStatus.Size = new Size(490, 110);
+            grpStatus.Size = new Size(590, 110);
             grpStatus.ForeColor = Color.FromArgb(71, 85, 105);
             tabCharger.Controls.Add(grpStatus);
 
             lblChargerStatus = new Label();
             lblChargerStatus.Location = new Point(18, 25);
-            lblChargerStatus.Size = new Size(455, 25);
+            lblChargerStatus.Size = new Size(555, 25);
             lblChargerStatus.Font = new Font("Segoe UI", 10.5f, FontStyle.Bold);
             lblChargerStatus.UseMnemonic = false;
             grpStatus.Controls.Add(lblChargerStatus);
 
             lblChargerDescription = new Label();
             lblChargerDescription.Location = new Point(18, 55);
-            lblChargerDescription.Size = new Size(455, 45);
+            lblChargerDescription.Size = new Size(555, 45);
             lblChargerDescription.Font = new Font("Segoe UI", 8.75f, FontStyle.Regular);
             lblChargerDescription.ForeColor = Color.FromArgb(100, 116, 139);
             lblChargerDescription.UseMnemonic = false;
@@ -807,14 +1162,14 @@ namespace PowerLockGuard
             GroupBox grpAction = new GroupBox();
             grpAction.Text = " Action When Charger Unplugged ";
             grpAction.Location = new Point(25, 202);
-            grpAction.Size = new Size(490, 80);
+            grpAction.Size = new Size(590, 80);
             grpAction.ForeColor = Color.FromArgb(71, 85, 105);
             tabCharger.Controls.Add(grpAction);
 
             lblChargerActionPrompt = new Label();
             lblChargerActionPrompt.Text = "Trigger this action on unplug:";
             lblChargerActionPrompt.Location = new Point(18, 30);
-            lblChargerActionPrompt.Size = new Size(190, 25);
+            lblChargerActionPrompt.Size = new Size(200, 25);
             lblChargerActionPrompt.UseMnemonic = false;
             grpAction.Controls.Add(lblChargerActionPrompt);
 
@@ -826,8 +1181,8 @@ namespace PowerLockGuard
                 "Hibernate PC",
                 "Lock Workstation"
             });
-            cmbChargerAction.Location = new Point(215, 26);
-            cmbChargerAction.Size = new Size(255, 28);
+            cmbChargerAction.Location = new Point(225, 26);
+            cmbChargerAction.Size = new Size(345, 28);
             SetComboSelectedAction(cmbChargerAction, settings.ChargerGuardAction);
             cmbChargerAction.SelectedIndexChanged += (s, e) =>
             {
@@ -840,7 +1195,7 @@ namespace PowerLockGuard
             Label lblNote = new Label();
             lblNote.Text = "💡 Tip: Sleep mode keeps all open IDE files and RAM intact. Zero battery drain.";
             lblNote.Location = new Point(28, 292);
-            lblNote.Size = new Size(485, 30);
+            lblNote.Size = new Size(585, 30);
             lblNote.ForeColor = Color.FromArgb(100, 116, 139);
             lblNote.Font = new Font("Segoe UI", 8.5f, FontStyle.Italic);
             lblNote.UseMnemonic = false;
@@ -848,8 +1203,8 @@ namespace PowerLockGuard
 
             LinkLabel lnkAboutCharger = new LinkLabel();
             lnkAboutCharger.Text = "PowerLockGuard v1.0.0 • Developed by GMK Solution (gmksolution.com)";
-            lnkAboutCharger.Location = new Point(25, 395);
-            lnkAboutCharger.Size = new Size(490, 25);
+            lnkAboutCharger.Location = new Point(25, 524);
+            lnkAboutCharger.Size = new Size(590, 25);
             lnkAboutCharger.TextAlign = ContentAlignment.MiddleCenter;
             lnkAboutCharger.LinkColor = Color.FromArgb(16, 185, 129);
             lnkAboutCharger.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
@@ -870,8 +1225,8 @@ namespace PowerLockGuard
 
             // Master Watchdog Toggle Button
             btnToggleWatchdog = new Button();
-            btnToggleWatchdog.Location = new Point(25, 12);
-            btnToggleWatchdog.Size = new Size(490, 52);
+            btnToggleWatchdog.Location = new Point(25, 10);
+            btnToggleWatchdog.Size = new Size(590, 50);
             btnToggleWatchdog.FlatStyle = FlatStyle.Flat;
             btnToggleWatchdog.FlatAppearance.BorderSize = 0;
             btnToggleWatchdog.Font = new Font("Segoe UI", 11f, FontStyle.Bold);
@@ -884,16 +1239,16 @@ namespace PowerLockGuard
             // Configuration Group
             GroupBox grpConfig = new GroupBox();
             grpConfig.Text = " Watchdog Monitoring Settings ";
-            grpConfig.Location = new Point(25, 70);
-            grpConfig.Size = new Size(490, 172);
+            grpConfig.Location = new Point(25, 62);
+            grpConfig.Size = new Size(590, 186);
             grpConfig.ForeColor = Color.FromArgb(71, 85, 105);
             tabWatchdog.Controls.Add(grpConfig);
 
             // Row 1: Action when work finishes
             Label lblAct = new Label();
             lblAct.Text = "When work finishes:";
-            lblAct.Location = new Point(15, 26);
-            lblAct.Size = new Size(145, 22);
+            lblAct.Location = new Point(15, 24);
+            lblAct.Size = new Size(160, 22);
             lblAct.UseMnemonic = false;
             grpConfig.Controls.Add(lblAct);
 
@@ -904,8 +1259,8 @@ namespace PowerLockGuard
                 "Shut Down PC",
                 "Hibernate PC"
             });
-            cmbWatchdogAction.Location = new Point(165, 23);
-            cmbWatchdogAction.Size = new Size(305, 28);
+            cmbWatchdogAction.Location = new Point(180, 21);
+            cmbWatchdogAction.Size = new Size(395, 28);
             SetComboSelectedAction(cmbWatchdogAction, settings.WatchdogAction);
             cmbWatchdogAction.SelectedIndexChanged += (s, e) =>
             {
@@ -918,33 +1273,37 @@ namespace PowerLockGuard
             // Row 2: Target Tasks / Agents
             Label lblTarget = new Label();
             lblTarget.Text = "Monitored tasks:";
-            lblTarget.Location = new Point(15, 62);
-            lblTarget.Size = new Size(145, 22);
+            lblTarget.Location = new Point(15, 58);
+            lblTarget.Size = new Size(160, 22);
             lblTarget.UseMnemonic = false;
             grpConfig.Controls.Add(lblTarget);
 
             cmbWatchdogMode = new ComboBox();
             cmbWatchdogMode.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbWatchdogMode.Items.AddRange(new object[] {
-                "Auto-Detect AI Agents & IDEs (Claude, Cursor, VS Code, etc.)",
-                "Specific Process Name (e.g. claude, python, npm)"
+                "⚡ AI Agents + Active Builds (Claude, Python, Node... - Recommended)",
+                "🤖 AI Coding Agents Only (Claude, Aider, Codex, Cline...)",
+                "💻 All Dev Tools (Including VS Code, Cursor, Antigravity)",
+                "🎯 Specific Process Name (e.g. claude, python, npm)"
             });
-            cmbWatchdogMode.Location = new Point(165, 59);
-            cmbWatchdogMode.Size = new Size(305, 28);
-            cmbWatchdogMode.SelectedIndex = (settings.WatchdogMode == "SpecificProcess") ? 1 : 0;
+            cmbWatchdogMode.Location = new Point(180, 55);
+            cmbWatchdogMode.Size = new Size(395, 28);
+            SelectModeCombo(cmbWatchdogMode, settings.WatchdogMode);
             cmbWatchdogMode.SelectedIndexChanged += (s, e) =>
             {
-                settings.WatchdogMode = (cmbWatchdogMode.SelectedIndex == 1) ? "SpecificProcess" : "AutoDev";
+                settings.WatchdogMode = GetModeFromCombo(cmbWatchdogMode);
                 txtCustomProcess.Visible = (settings.WatchdogMode == "SpecificProcess");
                 settings.Save();
                 LogActivity("Watchdog mode set to: " + settings.WatchdogMode);
+                watchdogEngine.Poll(settings.WatchdogMode, settings.WatchdogTargetProcess, 1000, settings.WatchdogIdleThreshold);
+                UpdateTelemetryUI();
             };
             grpConfig.Controls.Add(cmbWatchdogMode);
 
             // Row 2.5: Custom process textbox
             txtCustomProcess = new TextBox();
-            txtCustomProcess.Location = new Point(165, 92);
-            txtCustomProcess.Size = new Size(305, 25);
+            txtCustomProcess.Location = new Point(180, 86);
+            txtCustomProcess.Size = new Size(395, 25);
             txtCustomProcess.Text = settings.WatchdogTargetProcess;
             txtCustomProcess.Visible = (settings.WatchdogMode == "SpecificProcess");
             txtCustomProcess.TextChanged += (s, e) =>
@@ -954,11 +1313,11 @@ namespace PowerLockGuard
             };
             grpConfig.Controls.Add(txtCustomProcess);
 
-            // Row 3: Grace Period
+            // Row 3: Grace Period & Idle CPU Threshold
             Label lblGrace = new Label();
             lblGrace.Text = "Inactivity buffer:";
-            lblGrace.Location = new Point(15, 130);
-            lblGrace.Size = new Size(145, 22);
+            lblGrace.Location = new Point(15, 126);
+            lblGrace.Size = new Size(160, 22);
             lblGrace.UseMnemonic = false;
             grpConfig.Controls.Add(lblGrace);
 
@@ -971,8 +1330,8 @@ namespace PowerLockGuard
                 "5 Minutes",
                 "10 Minutes"
             });
-            cmbWatchdogGrace.Location = new Point(165, 127);
-            cmbWatchdogGrace.Size = new Size(305, 28);
+            cmbWatchdogGrace.Location = new Point(180, 123);
+            cmbWatchdogGrace.Size = new Size(130, 28);
             SelectGraceCombo(cmbWatchdogGrace, settings.WatchdogGraceMinutes);
             cmbWatchdogGrace.SelectedIndexChanged += (s, e) =>
             {
@@ -982,62 +1341,169 @@ namespace PowerLockGuard
             };
             grpConfig.Controls.Add(cmbWatchdogGrace);
 
-            // Live Telemetry & Status Group
+            Label lblThreshold = new Label();
+            lblThreshold.Text = "Idle CPU cutoff:";
+            lblThreshold.Location = new Point(325, 126);
+            lblThreshold.Size = new Size(125, 22);
+            lblThreshold.UseMnemonic = false;
+            grpConfig.Controls.Add(lblThreshold);
+
+            cmbWatchdogThreshold = new ComboBox();
+            cmbWatchdogThreshold.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbWatchdogThreshold.Items.AddRange(new object[] {
+                "1.5%",
+                "2.5%",
+                "3.5% (Default)",
+                "5.0%",
+                "8.0%",
+                "10.0%"
+            });
+            cmbWatchdogThreshold.Location = new Point(455, 123);
+            cmbWatchdogThreshold.Size = new Size(120, 28);
+            SelectThresholdCombo(cmbWatchdogThreshold, settings.WatchdogIdleThreshold);
+            cmbWatchdogThreshold.SelectedIndexChanged += (s, e) =>
+            {
+                settings.WatchdogIdleThreshold = GetThresholdFromCombo(cmbWatchdogThreshold);
+                settings.Save();
+                LogActivity("Idle CPU cutoff threshold set to: " + settings.WatchdogIdleThreshold.ToString("0.0") + "%");
+                watchdogEngine.Poll(settings.WatchdogMode, settings.WatchdogTargetProcess, 1000, settings.WatchdogIdleThreshold);
+                UpdateTelemetryUI();
+            };
+            grpConfig.Controls.Add(cmbWatchdogThreshold);
+
+            // Row 4: Auto-kill stuck runaway processes checkbox
+            chkAutoKillStuck = new CheckBox();
+            chkAutoKillStuck.Text = "⚡ Auto-kill runaway / stuck dev processes before initiating sleep";
+            chkAutoKillStuck.Location = new Point(15, 154);
+            chkAutoKillStuck.Size = new Size(560, 24);
+            chkAutoKillStuck.Checked = settings.AutoKillStuckAgentsOnSleep;
+            chkAutoKillStuck.Font = new Font("Segoe UI", 9f, FontStyle.Regular);
+            chkAutoKillStuck.ForeColor = Color.FromArgb(30, 41, 59);
+            chkAutoKillStuck.Cursor = Cursors.Hand;
+            chkAutoKillStuck.CheckedChanged += (s, e) =>
+            {
+                settings.AutoKillStuckAgentsOnSleep = chkAutoKillStuck.Checked;
+                settings.Save();
+                LogActivity("Auto-kill stuck processes set to: " + settings.AutoKillStuckAgentsOnSleep);
+            };
+            grpConfig.Controls.Add(chkAutoKillStuck);
+
+            // Live Telemetry & Detailed Process Metrics Group
             GroupBox grpTelemetry = new GroupBox();
-            grpTelemetry.Text = " Live Work && Task Telemetry ";
-            grpTelemetry.Location = new Point(25, 248);
-            grpTelemetry.Size = new Size(490, 135);
+            grpTelemetry.Text = " Live Work && Process Telemetry ";
+            grpTelemetry.Location = new Point(25, 252);
+            grpTelemetry.Size = new Size(590, 264);
             grpTelemetry.ForeColor = Color.FromArgb(71, 85, 105);
             tabWatchdog.Controls.Add(grpTelemetry);
 
             lblWatchdogActivity = new Label();
             lblWatchdogActivity.Text = "Status: Initializing...";
-            lblWatchdogActivity.Location = new Point(15, 24);
-            lblWatchdogActivity.Size = new Size(345, 22);
+            lblWatchdogActivity.Location = new Point(15, 18);
+            lblWatchdogActivity.Size = new Size(325, 20);
             lblWatchdogActivity.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
             lblWatchdogActivity.UseMnemonic = false;
             grpTelemetry.Controls.Add(lblWatchdogActivity);
 
             lblWatchdogCpu = new Label();
             lblWatchdogCpu.Text = "CPU: 0.0%";
-            lblWatchdogCpu.Location = new Point(370, 24);
-            lblWatchdogCpu.Size = new Size(100, 22);
+            lblWatchdogCpu.Location = new Point(340, 18);
+            lblWatchdogCpu.Size = new Size(235, 20);
             lblWatchdogCpu.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
             lblWatchdogCpu.TextAlign = ContentAlignment.TopRight;
             grpTelemetry.Controls.Add(lblWatchdogCpu);
 
-            prgActivity = new ProgressBar();
-            prgActivity.Location = new Point(18, 50);
-            prgActivity.Size = new Size(452, 12);
-            prgActivity.Maximum = 100;
-            grpTelemetry.Controls.Add(prgActivity);
+            // Colorful Modern Activity & Sleep Buffer Meter
+            activityMeter = new ModernActivityMeter();
+            activityMeter.Location = new Point(15, 42);
+            activityMeter.Size = new Size(560, 22);
+            grpTelemetry.Controls.Add(activityMeter);
 
             lblWatchdogTimer = new Label();
             lblWatchdogTimer.Text = "Waiting for tasks to start...";
-            lblWatchdogTimer.Location = new Point(15, 72);
-            lblWatchdogTimer.Size = new Size(365, 32);
+            lblWatchdogTimer.Location = new Point(15, 68);
+            lblWatchdogTimer.Size = new Size(560, 18);
             lblWatchdogTimer.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
             lblWatchdogTimer.ForeColor = Color.FromArgb(100, 116, 139);
             lblWatchdogTimer.UseMnemonic = false;
             grpTelemetry.Controls.Add(lblWatchdogTimer);
 
+            // DoubleBuffered ListView for all monitored processes (Responsive, no bottom horizontal scroll)
+            lvwProcesses = new DoubleBufferedListView();
+            lvwProcesses.Location = new Point(15, 88);
+            lvwProcesses.Size = new Size(560, 138);
+            lvwProcesses.View = View.Details;
+            lvwProcesses.FullRowSelect = true;
+            lvwProcesses.GridLines = true;
+            lvwProcesses.MultiSelect = false;
+            lvwProcesses.HideSelection = false;
+            lvwProcesses.HeaderStyle = ColumnHeaderStyle.Nonclickable;
+            lvwProcesses.Font = new Font("Segoe UI", 8.75f, FontStyle.Regular);
+            lvwProcesses.BackColor = Color.White;
+
+            lvwProcesses.Columns.Add("Process Name", 160);
+            lvwProcesses.Columns.Add("PID", 55);
+            lvwProcesses.Columns.Add("CPU %", 65);
+            lvwProcesses.Columns.Add("Memory", 75);
+            lvwProcesses.Columns.Add("Activity", 125);
+            lvwProcesses.Columns.Add("Tracking", 80);
+            lvwProcesses.ClientSizeChanged += (s, e) => AdjustProcessListColumns();
+
+            // Context Menu for Process Grid
+            menuProcesses = new ContextMenuStrip();
+            ToolStripMenuItem mnuIgnore = new ToolStripMenuItem("🚫 Ignore / Unignore Process", null, (s, e) => ToggleSelectedProcessIgnore());
+            ToolStripMenuItem mnuKill = new ToolStripMenuItem("⚡ Terminate / End Stuck Process", null, (s, e) => KillSelectedProcess());
+            ToolStripMenuItem mnuCopy = new ToolStripMenuItem("📋 Copy Process Info", null, (s, e) => CopySelectedProcessInfo());
+            menuProcesses.Items.Add(mnuIgnore);
+            menuProcesses.Items.Add(mnuKill);
+            menuProcesses.Items.Add(new ToolStripSeparator());
+            menuProcesses.Items.Add(mnuCopy);
+            lvwProcesses.ContextMenuStrip = menuProcesses;
+
+            grpTelemetry.Controls.Add(lvwProcesses);
+
+            // Action Buttons below ListView
+            btnIgnoreProcess = new Button();
+            btnIgnoreProcess.Text = "🚫 Ignore / Watch Process";
+            btnIgnoreProcess.Location = new Point(15, 232);
+            btnIgnoreProcess.Size = new Size(175, 28);
+            btnIgnoreProcess.FlatStyle = FlatStyle.Flat;
+            btnIgnoreProcess.BackColor = Color.FromArgb(241, 245, 249);
+            btnIgnoreProcess.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
+            btnIgnoreProcess.Cursor = Cursors.Hand;
+            btnIgnoreProcess.Click += (s, e) => ToggleSelectedProcessIgnore();
+            grpTelemetry.Controls.Add(btnIgnoreProcess);
+
+            btnKillProcess = new Button();
+            btnKillProcess.Text = "⚡ End Stuck Process";
+            btnKillProcess.Location = new Point(198, 232);
+            btnKillProcess.Size = new Size(165, 28);
+            btnKillProcess.FlatStyle = FlatStyle.Flat;
+            btnKillProcess.BackColor = Color.FromArgb(254, 242, 242);
+            btnKillProcess.ForeColor = Color.FromArgb(220, 38, 38);
+            btnKillProcess.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+            btnKillProcess.Cursor = Cursors.Hand;
+            btnKillProcess.Click += (s, e) => KillSelectedProcess();
+            grpTelemetry.Controls.Add(btnKillProcess);
+
             btnRefreshProcesses = new Button();
-            btnRefreshProcesses.Text = "🔄 Scan";
-            btnRefreshProcesses.Location = new Point(390, 72);
-            btnRefreshProcesses.Size = new Size(80, 28);
+            btnRefreshProcesses.Text = "🔄 Rescan";
+            btnRefreshProcesses.Location = new Point(475, 232);
+            btnRefreshProcesses.Size = new Size(100, 28);
             btnRefreshProcesses.FlatStyle = FlatStyle.Flat;
             btnRefreshProcesses.BackColor = Color.FromArgb(241, 245, 249);
+            btnRefreshProcesses.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
+            btnRefreshProcesses.Cursor = Cursors.Hand;
             btnRefreshProcesses.Click += (s, e) =>
             {
-                watchdogEngine.Poll(settings.WatchdogMode, settings.WatchdogTargetProcess, 1000);
+                watchdogEngine.Poll(settings.WatchdogMode, settings.WatchdogTargetProcess, 1000, settings.WatchdogIdleThreshold);
                 UpdateTelemetryUI();
             };
             grpTelemetry.Controls.Add(btnRefreshProcesses);
 
             LinkLabel lnkAboutWatchdog = new LinkLabel();
             lnkAboutWatchdog.Text = "PowerLockGuard v1.0.0 • Developed by GMK Solution (gmksolution.com)";
-            lnkAboutWatchdog.Location = new Point(25, 395);
-            lnkAboutWatchdog.Size = new Size(490, 25);
+            lnkAboutWatchdog.Location = new Point(25, 524);
+            lnkAboutWatchdog.Size = new Size(590, 22);
             lnkAboutWatchdog.TextAlign = ContentAlignment.MiddleCenter;
             lnkAboutWatchdog.LinkColor = Color.FromArgb(16, 185, 129);
             lnkAboutWatchdog.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
@@ -1046,6 +1512,8 @@ namespace PowerLockGuard
                 try { Process.Start("https://gmksolution.com"); } catch { }
             };
             tabWatchdog.Controls.Add(lnkAboutWatchdog);
+
+            AdjustProcessListColumns();
         }
         #endregion
 
@@ -1059,7 +1527,7 @@ namespace PowerLockGuard
             // General options
             chkStartup = new CheckBox();
             chkStartup.Text = "Start PowerLockGuard automatically with Windows";
-            chkStartup.Location = new Point(25, 12);
+            chkStartup.Location = new Point(25, 14);
             chkStartup.AutoSize = true;
             chkStartup.Checked = settings.StartWithWindows;
             chkStartup.CheckedChanged += (s, e) =>
@@ -1073,7 +1541,7 @@ namespace PowerLockGuard
 
             chkSound = new CheckBox();
             chkSound.Text = "Play warning sound alert before Sleep / Shutdown";
-            chkSound.Location = new Point(25, 36);
+            chkSound.Location = new Point(25, 38);
             chkSound.AutoSize = true;
             chkSound.Checked = settings.PlayAlertSound;
             chkSound.CheckedChanged += (s, e) =>
@@ -1085,16 +1553,16 @@ namespace PowerLockGuard
 
             Label lblCountPrompt = new Label();
             lblCountPrompt.Text = "Safety Countdown Duration:";
-            lblCountPrompt.Location = new Point(25, 65);
-            lblCountPrompt.Size = new Size(180, 22);
+            lblCountPrompt.Location = new Point(25, 68);
+            lblCountPrompt.Size = new Size(190, 22);
             lblCountPrompt.UseMnemonic = false;
             tabSettings.Controls.Add(lblCountPrompt);
 
             cmbCountdownSeconds = new ComboBox();
             cmbCountdownSeconds.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbCountdownSeconds.Items.AddRange(new object[] { "15 Seconds", "30 Seconds", "60 Seconds" });
-            cmbCountdownSeconds.Location = new Point(205, 62);
-            cmbCountdownSeconds.Size = new Size(125, 26);
+            cmbCountdownSeconds.Location = new Point(220, 65);
+            cmbCountdownSeconds.Size = new Size(130, 26);
             if (settings.CountdownSeconds == 15) cmbCountdownSeconds.SelectedIndex = 0;
             else if (settings.CountdownSeconds == 60) cmbCountdownSeconds.SelectedIndex = 2;
             else cmbCountdownSeconds.SelectedIndex = 1;
@@ -1111,8 +1579,8 @@ namespace PowerLockGuard
             // Action Test button
             btnTestCountdown = new Button();
             btnTestCountdown.Text = "🔔 Test Warning Dialog";
-            btnTestCountdown.Location = new Point(345, 60);
-            btnTestCountdown.Size = new Size(170, 30);
+            btnTestCountdown.Location = new Point(385, 63);
+            btnTestCountdown.Size = new Size(230, 30);
             btnTestCountdown.FlatStyle = FlatStyle.Flat;
             btnTestCountdown.BackColor = Color.FromArgb(241, 245, 249);
             btnTestCountdown.Cursor = Cursors.Hand;
@@ -1122,30 +1590,30 @@ namespace PowerLockGuard
             // Activity Log Box
             GroupBox grpLog = new GroupBox();
             grpLog.Text = " Activity && Event History ";
-            grpLog.Location = new Point(25, 98);
-            grpLog.Size = new Size(490, 205);
+            grpLog.Location = new Point(25, 102);
+            grpLog.Size = new Size(590, 275);
             grpLog.ForeColor = Color.FromArgb(71, 85, 105);
             tabSettings.Controls.Add(grpLog);
 
             lstActivityLog = new ListBox();
             lstActivityLog.Location = new Point(15, 22);
-            lstActivityLog.Size = new Size(460, 140);
+            lstActivityLog.Size = new Size(560, 205);
             lstActivityLog.Font = new Font("Consolas", 8.25f, FontStyle.Regular);
             lstActivityLog.BackColor = Color.FromArgb(248, 250, 252);
             grpLog.Controls.Add(lstActivityLog);
 
             btnClearLog = new Button();
             btnClearLog.Text = "Clear History";
-            btnClearLog.Location = new Point(15, 168);
-            btnClearLog.Size = new Size(100, 26);
+            btnClearLog.Location = new Point(15, 238);
+            btnClearLog.Size = new Size(120, 26);
             btnClearLog.FlatStyle = FlatStyle.Flat;
             btnClearLog.Click += (s, e) => lstActivityLog.Items.Clear();
             grpLog.Controls.Add(btnClearLog);
 
             btnTestSleep = new Button();
             btnTestSleep.Text = "💤 Sleep PC Now";
-            btnTestSleep.Location = new Point(345, 168);
-            btnTestSleep.Size = new Size(130, 26);
+            btnTestSleep.Location = new Point(435, 238);
+            btnTestSleep.Size = new Size(140, 26);
             btnTestSleep.FlatStyle = FlatStyle.Flat;
             btnTestSleep.BackColor = Color.FromArgb(226, 232, 240);
             btnTestSleep.Click += (s, e) =>
@@ -1158,15 +1626,15 @@ namespace PowerLockGuard
             // About & Developer Card
             GroupBox grpAbout = new GroupBox();
             grpAbout.Text = " About && Developer ";
-            grpAbout.Location = new Point(25, 312);
-            grpAbout.Size = new Size(490, 110);
+            grpAbout.Location = new Point(25, 385);
+            grpAbout.Size = new Size(590, 110);
             grpAbout.ForeColor = Color.FromArgb(71, 85, 105);
             tabSettings.Controls.Add(grpAbout);
 
             Label lblAboutTitle = new Label();
             lblAboutTitle.Text = "PowerLockGuard v1.0.0 — Official Developer Release";
-            lblAboutTitle.Location = new Point(15, 22);
-            lblAboutTitle.Size = new Size(460, 22);
+            lblAboutTitle.Location = new Point(15, 20);
+            lblAboutTitle.Size = new Size(560, 22);
             lblAboutTitle.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
             lblAboutTitle.ForeColor = Color.FromArgb(15, 23, 42);
             lblAboutTitle.UseMnemonic = false;
@@ -1174,8 +1642,8 @@ namespace PowerLockGuard
 
             Label lblAboutDesc = new Label();
             lblAboutDesc.Text = "Lightweight power guard that puts your PC to deep sleep or shuts down\nwhen AI agents finish coding, and locks immediately upon charger unplug.";
-            lblAboutDesc.Location = new Point(15, 46);
-            lblAboutDesc.Size = new Size(460, 36);
+            lblAboutDesc.Location = new Point(15, 44);
+            lblAboutDesc.Size = new Size(560, 36);
             lblAboutDesc.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
             lblAboutDesc.ForeColor = Color.FromArgb(100, 116, 139);
             lblAboutDesc.UseMnemonic = false;
@@ -1183,8 +1651,8 @@ namespace PowerLockGuard
 
             LinkLabel lnkWebsite = new LinkLabel();
             lnkWebsite.Text = "🌐 Developer Website: https://gmksolution.com  |  GMK Solution";
-            lnkWebsite.Location = new Point(15, 84);
-            lnkWebsite.Size = new Size(460, 20);
+            lnkWebsite.Location = new Point(15, 82);
+            lnkWebsite.Size = new Size(560, 20);
             lnkWebsite.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
             lnkWebsite.LinkColor = Color.FromArgb(16, 185, 129);
             lnkWebsite.UseMnemonic = false;
@@ -1296,8 +1764,24 @@ namespace PowerLockGuard
         {
             if (!isInitialized) return;
 
-            // Poll watchdog engine
-            watchdogEngine.Poll(settings.WatchdogMode, settings.WatchdogTargetProcess, watchdogTimer.Interval);
+            // Poll watchdog engine with configured idle threshold
+            watchdogEngine.Poll(settings.WatchdogMode, settings.WatchdogTargetProcess, watchdogTimer.Interval, settings.WatchdogIdleThreshold);
+
+            // Auto-kill runaway stuck processes if user is away
+            if (settings.WatchdogEnabled && settings.AutoKillStuckAgentsOnSleep)
+            {
+                int userIdle = UserInactivityDetector.GetUserIdleSeconds();
+                int graceSec = settings.WatchdogGraceMinutes * 60;
+                if (userIdle >= graceSec)
+                {
+                    string killed = watchdogEngine.AutoKillRunawayIfUserAway(graceSec);
+                    if (!string.IsNullOrEmpty(killed))
+                    {
+                        LogActivity("⚡ [Auto-Kill] " + killed);
+                    }
+                }
+            }
+
             UpdateTelemetryUI();
 
             // Check if Watchdog is enabled and grace period has expired
@@ -1308,8 +1792,8 @@ namespace PowerLockGuard
                 // If tasks are idle consecutively for the grace duration:
                 if (watchdogEngine.ConsecutiveIdleSeconds >= graceSeconds)
                 {
-                    LogActivity(string.Format("Tasks have been idle for {0}m. Starting countdown to {1}.",
-                        settings.WatchdogGraceMinutes, settings.WatchdogAction));
+                    LogActivity(string.Format("Tasks idle for {0}m (CPU below {1:F1}%). Starting countdown to {2}.",
+                        settings.WatchdogGraceMinutes, settings.WatchdogIdleThreshold, settings.WatchdogAction));
                     TriggerCountdownAndAction(false);
                 }
             }
@@ -1318,15 +1802,49 @@ namespace PowerLockGuard
         private void UpdateTelemetryUI()
         {
             double cpu = watchdogEngine.LastSampledCpuPercent;
-            lblWatchdogCpu.Text = string.Format("CPU: {0:F1}%", cpu);
+            lblWatchdogCpu.Text = string.Format("CPU: {0:F1}% (Cutoff: {1:F1}%)", cpu, settings.WatchdogIdleThreshold);
 
-            int prgVal = (int)Math.Min(100, Math.Max(0, cpu));
-            prgActivity.Value = prgVal;
+            List<ProcessMetricItem> items = watchdogEngine.CurrentMetrics;
+            bool anyStuck = false;
+            if (items != null)
+            {
+                for (int k = 0; k < items.Count; k++)
+                {
+                    if (!items[k].IsIgnored && (items[k].IsStuck || items[k].CpuPercent >= 15.0))
+                    {
+                        anyStuck = true;
+                        break;
+                    }
+                }
+            }
 
-            if (watchdogEngine.HasActiveWork)
+            int graceSeconds = settings.WatchdogGraceMinutes * 60;
+            TimeSpan tIdle = TimeSpan.FromSeconds(watchdogEngine.ConsecutiveIdleSeconds);
+            TimeSpan tRem = TimeSpan.FromSeconds(Math.Max(0, graceSeconds - watchdogEngine.ConsecutiveIdleSeconds));
+
+            if (anyStuck)
+            {
+                lblWatchdogActivity.Text = "🔴 STUCK TASK: " + watchdogEngine.MonitoredProcessSummary;
+                lblWatchdogActivity.ForeColor = Color.FromArgb(220, 38, 38); // Alert Red
+
+                if (activityMeter != null)
+                {
+                    activityMeter.UpdateState(cpu, settings.WatchdogIdleThreshold, true, 0.0,
+                        string.Format("⚠️ Pegged Task Detected: {0:F1}% CPU Load", cpu));
+                }
+
+                lblWatchdogTimer.Text = "High CPU runaway task detected! Right-click or use 'End Stuck Process' below.";
+            }
+            else if (watchdogEngine.HasActiveWork)
             {
                 lblWatchdogActivity.Text = "🟢 WORKING: " + watchdogEngine.MonitoredProcessSummary;
                 lblWatchdogActivity.ForeColor = Color.FromArgb(5, 150, 105); // Green
+
+                if (activityMeter != null)
+                {
+                    activityMeter.UpdateState(cpu, settings.WatchdogIdleThreshold, true, 0.0,
+                        string.Format("⚡ Active Work: {0:F1}% CPU Load (Cutoff: {1:F1}%)", cpu, settings.WatchdogIdleThreshold));
+                }
 
                 lblWatchdogTimer.Text = "Active task execution detected. Watchdog is waiting for work to complete.";
             }
@@ -1335,20 +1853,224 @@ namespace PowerLockGuard
                 lblWatchdogActivity.Text = "🟡 IDLE: " + watchdogEngine.MonitoredProcessSummary;
                 lblWatchdogActivity.ForeColor = Color.FromArgb(217, 119, 6); // Amber
 
-                int graceSeconds = settings.WatchdogGraceMinutes * 60;
-                int remaining = Math.Max(0, graceSeconds - watchdogEngine.ConsecutiveIdleSeconds);
-                TimeSpan tIdle = TimeSpan.FromSeconds(watchdogEngine.ConsecutiveIdleSeconds);
-                TimeSpan tRem = TimeSpan.FromSeconds(remaining);
-
+                double bufferProgress = (graceSeconds > 0) ? (double)watchdogEngine.ConsecutiveIdleSeconds / graceSeconds : 0.0;
+                string barText;
                 if (settings.WatchdogEnabled)
                 {
+                    barText = string.Format("⏳ Buffer: {0:mm\\:ss} / {1:mm\\:ss} ({2}% elapsed)",
+                        tIdle, TimeSpan.FromSeconds(graceSeconds), (int)(bufferProgress * 100));
                     lblWatchdogTimer.Text = string.Format("Idle for: {0:mm\\:ss} / {1:mm\\:ss} buffer. {2} in {3:mm\\:ss}.",
                         tIdle, TimeSpan.FromSeconds(graceSeconds), settings.WatchdogAction, tRem);
                 }
                 else
                 {
+                    barText = string.Format("⚪ Tasks Idle ({0:mm\\:ss}) • Watchdog is OFF", tIdle);
                     lblWatchdogTimer.Text = string.Format("Tasks currently idle ({0:mm\\:ss}). Turn ON Watchdog to auto-sleep.", tIdle);
                 }
+
+                if (activityMeter != null)
+                {
+                    activityMeter.UpdateState(cpu, settings.WatchdogIdleThreshold, false, bufferProgress, barText);
+                }
+            }
+
+            // Update process listview with colorful responsive rows
+            if (items != null && lvwProcesses != null)
+            {
+                lvwProcesses.BeginUpdate();
+                try
+                {
+                    HashSet<int> currentPids = new HashSet<int>();
+                    for (int k = 0; k < items.Count; k++)
+                    {
+                        currentPids.Add(items[k].Pid);
+                    }
+
+                    // Remove terminated/closed processes first
+                    for (int j = lvwProcesses.Items.Count - 1; j >= 0; j--)
+                    {
+                        ListViewItem lvi = lvwProcesses.Items[j];
+                        if (lvi.Tag is int && !currentPids.Contains((int)lvi.Tag))
+                        {
+                            lvwProcesses.Items.RemoveAt(j);
+                        }
+                    }
+
+                    Dictionary<int, ListViewItem> existing = new Dictionary<int, ListViewItem>();
+                    foreach (ListViewItem lvi in lvwProcesses.Items)
+                    {
+                        if (lvi.Tag is int) existing[(int)lvi.Tag] = lvi;
+                    }
+
+                    for (int i = 0; i < items.Count; i++)
+                    {
+                        ProcessMetricItem m = items[i];
+
+                        bool isProcessStuck = (m.IsStuck || (!m.IsIgnored && m.CpuPercent >= 15.0));
+
+                        string cpuStr = string.Format("{0:F1}%", m.CpuPercent);
+                        string memStr = string.Format("{0:F1} MB", m.MemoryMb);
+                        string actStr = isProcessStuck ? "🔴 STUCK / High" : (m.IsActive ? "🟢 Active" : "⚪ Idle");
+                        string trackStr = m.IsIgnored ? "🚫 Ignored" : "✓ Tracking";
+
+                        ListViewItem targetItem;
+                        if (existing.ContainsKey(m.Pid))
+                        {
+                            targetItem = existing[m.Pid];
+                            if (targetItem.SubItems[0].Text != m.Name) targetItem.SubItems[0].Text = m.Name;
+                            if (targetItem.SubItems[1].Text != m.Pid.ToString()) targetItem.SubItems[1].Text = m.Pid.ToString();
+                            if (targetItem.SubItems[2].Text != cpuStr) targetItem.SubItems[2].Text = cpuStr;
+                            if (targetItem.SubItems[3].Text != memStr) targetItem.SubItems[3].Text = memStr;
+                            if (targetItem.SubItems[4].Text != actStr) targetItem.SubItems[4].Text = actStr;
+                            if (targetItem.SubItems[5].Text != trackStr) targetItem.SubItems[5].Text = trackStr;
+
+                            // Reposition item to index i so active and stuck processes are at the very top live
+                            int curIdx = targetItem.Index;
+                            if (curIdx != i && curIdx >= 0 && i < lvwProcesses.Items.Count)
+                            {
+                                lvwProcesses.Items.RemoveAt(curIdx);
+                                lvwProcesses.Items.Insert(i, targetItem);
+                            }
+                        }
+                        else
+                        {
+                            targetItem = new ListViewItem(m.Name);
+                            targetItem.Tag = m.Pid;
+                            targetItem.SubItems.Add(m.Pid.ToString());
+                            targetItem.SubItems.Add(cpuStr);
+                            targetItem.SubItems.Add(memStr);
+                            targetItem.SubItems.Add(actStr);
+                            targetItem.SubItems.Add(trackStr);
+
+                            if (i < lvwProcesses.Items.Count)
+                            {
+                                lvwProcesses.Items.Insert(i, targetItem);
+                            }
+                            else
+                            {
+                                lvwProcesses.Items.Add(targetItem);
+                            }
+                        }
+
+                        // Apply colorful row highlights
+                        if (isProcessStuck)
+                        {
+                            targetItem.BackColor = Color.FromArgb(254, 226, 226); // Alert Light Red
+                            targetItem.ForeColor = Color.FromArgb(185, 28, 28);   // Bold Dark Red
+                            targetItem.Font = new Font(lvwProcesses.Font, FontStyle.Bold);
+                        }
+                        else if (m.IsIgnored)
+                        {
+                            targetItem.BackColor = Color.FromArgb(241, 245, 249); // Muted gray
+                            targetItem.ForeColor = Color.FromArgb(148, 163, 184);
+                            targetItem.Font = new Font(lvwProcesses.Font, FontStyle.Regular);
+                        }
+                        else if (m.IsActive)
+                        {
+                            targetItem.BackColor = Color.FromArgb(240, 253, 244); // Light Mint Emerald
+                            targetItem.ForeColor = Color.FromArgb(21, 128, 61);   // Deep Emerald
+                            targetItem.Font = new Font(lvwProcesses.Font, FontStyle.Bold);
+                        }
+                        else
+                        {
+                            targetItem.BackColor = (i % 2 == 0) ? Color.White : Color.FromArgb(248, 250, 252);
+                            targetItem.ForeColor = Color.FromArgb(71, 85, 105);
+                            targetItem.Font = new Font(lvwProcesses.Font, FontStyle.Regular);
+                        }
+                    }
+                }
+                finally
+                {
+                    lvwProcesses.EndUpdate();
+                }
+
+                AdjustProcessListColumns();
+            }
+        }
+
+        private void AdjustProcessListColumns()
+        {
+            if (lvwProcesses == null || lvwProcesses.Columns.Count < 6) return;
+            int clientWidth = lvwProcesses.ClientSize.Width;
+            if (clientWidth <= 50) return;
+
+            int colPid = 55;
+            int colCpu = 65;
+            int colMem = 75;
+            int colAct = 125;
+            int colTrack = 80;
+
+            int fixedTotal = colPid + colCpu + colMem + colAct + colTrack;
+            int colName = Math.Max(120, clientWidth - fixedTotal);
+
+            lvwProcesses.Columns[0].Width = colName;
+            lvwProcesses.Columns[1].Width = colPid;
+            lvwProcesses.Columns[2].Width = colCpu;
+            lvwProcesses.Columns[3].Width = colMem;
+            lvwProcesses.Columns[4].Width = colAct;
+            lvwProcesses.Columns[5].Width = colTrack;
+        }
+
+        private void ToggleSelectedProcessIgnore()
+        {
+            if (lvwProcesses != null && lvwProcesses.SelectedItems.Count > 0)
+            {
+                ListViewItem sel = lvwProcesses.SelectedItems[0];
+                int pid = (int)sel.Tag;
+                string pName = sel.Text;
+                watchdogEngine.ToggleIgnoreProcess(pid, pName);
+                bool nowIgnored = watchdogEngine.IsProcessIgnored(pid, pName);
+                LogActivity(string.Format("{0} (PID {1}) is now {2}.", pName, pid, nowIgnored ? "IGNORED (excluded from sleep checks)" : "TRACKED"));
+                watchdogEngine.Poll(settings.WatchdogMode, settings.WatchdogTargetProcess, 1000, settings.WatchdogIdleThreshold);
+                UpdateTelemetryUI();
+            }
+            else
+            {
+                MessageBox.Show("Please select a process from the list first.", "No Process Selected", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        private void KillSelectedProcess()
+        {
+            if (lvwProcesses != null && lvwProcesses.SelectedItems.Count > 0)
+            {
+                ListViewItem sel = lvwProcesses.SelectedItems[0];
+                int pid = (int)sel.Tag;
+                string pName = sel.Text;
+                DialogResult dr = MessageBox.Show(
+                    string.Format("Are you sure you want to terminate '{0}' (PID: {1})?\nThis will stop the process and free up CPU resources.", pName, pid),
+                    "Confirm Terminate Process", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                if (dr == DialogResult.Yes)
+                {
+                    try
+                    {
+                        Process p = Process.GetProcessById(pid);
+                        p.Kill();
+                        LogActivity(string.Format("Terminated stuck process {0} (PID {1}).", pName, pid));
+                        watchdogEngine.Poll(settings.WatchdogMode, settings.WatchdogTargetProcess, 1000, settings.WatchdogIdleThreshold);
+                        UpdateTelemetryUI();
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Could not terminate process: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+            else
+            {
+                MessageBox.Show("Please select a process from the list first.", "No Process Selected", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        private void CopySelectedProcessInfo()
+        {
+            if (lvwProcesses != null && lvwProcesses.SelectedItems.Count > 0)
+            {
+                ListViewItem sel = lvwProcesses.SelectedItems[0];
+                string info = string.Format("Process: {0}, PID: {1}, CPU: {2}, RAM: {3}, Status: {4}, Tracking: {5}",
+                    sel.SubItems[0].Text, sel.SubItems[1].Text, sel.SubItems[2].Text,
+                    sel.SubItems[3].Text, sel.SubItems[4].Text, sel.SubItems[5].Text);
+                try { Clipboard.SetText(info); } catch { }
             }
         }
 
@@ -1376,6 +2098,15 @@ namespace PowerLockGuard
                 }
                 else
                 {
+                    if (settings.AutoKillStuckAgentsOnSleep)
+                    {
+                        List<string> killed = watchdogEngine.TerminateStuckProcesses();
+                        foreach (string msg in killed)
+                        {
+                            LogActivity("⚡ [Auto-Kill] " + msg);
+                        }
+                    }
+
                     LogActivity(string.Format("Executing {0} now. Goodbye!", settings.WatchdogAction));
                     // Auto turn off watchdog so it doesn't re-trigger immediately upon wakeup
                     settings.WatchdogEnabled = false;
@@ -1539,6 +2270,47 @@ namespace PowerLockGuard
             return 3;
         }
 
+        private void SelectModeCombo(ComboBox cmb, string mode)
+        {
+            if (mode == "AIAgentsOnly") cmb.SelectedIndex = 1;
+            else if (mode == "AllDevTools") cmb.SelectedIndex = 2;
+            else if (mode == "SpecificProcess") cmb.SelectedIndex = 3;
+            else cmb.SelectedIndex = 0; // AgentsAndBuilds
+        }
+
+        private string GetModeFromCombo(ComboBox cmb)
+        {
+            int idx = cmb.SelectedIndex;
+            if (idx == 1) return "AIAgentsOnly";
+            if (idx == 2) return "AllDevTools";
+            if (idx == 3) return "SpecificProcess";
+            return "AgentsAndBuilds";
+        }
+
+        private void SelectThresholdCombo(ComboBox cmb, double thresh)
+        {
+            if (thresh <= 1.5) cmb.SelectedIndex = 0;
+            else if (thresh <= 2.5) cmb.SelectedIndex = 1;
+            else if (thresh <= 3.5) cmb.SelectedIndex = 2;
+            else if (thresh <= 5.0) cmb.SelectedIndex = 3;
+            else if (thresh <= 8.0) cmb.SelectedIndex = 4;
+            else cmb.SelectedIndex = 5;
+        }
+
+        private double GetThresholdFromCombo(ComboBox cmb)
+        {
+            switch (cmb.SelectedIndex)
+            {
+                case 0: return 1.5;
+                case 1: return 2.5;
+                case 2: return 3.5;
+                case 3: return 5.0;
+                case 4: return 8.0;
+                case 5: return 10.0;
+                default: return 3.5;
+            }
+        }
+
         private void UpdateStartupShortcut(bool enable)
         {
             try
@@ -1594,11 +2366,79 @@ namespace PowerLockGuard
 
                 // 2. Tab 2: Work Watchdog
                 SwitchTab(1);
-                lblWatchdogActivity.Text = "🟢 WORKING: 4 tasks (cursor, node, python, claude)";
-                lblWatchdogActivity.ForeColor = Color.FromArgb(5, 150, 105);
-                lblWatchdogCpu.Text = "CPU: 14.8%";
-                prgActivity.Value = 15;
-                lblWatchdogTimer.Text = "Active task execution detected. Watchdog is monitoring work progress.";
+                lblWatchdogActivity.Text = "🔴 STUCK TASK: 5 tasks (3 active, 39.6% CPU)";
+                lblWatchdogActivity.ForeColor = Color.FromArgb(220, 38, 38);
+                lblWatchdogCpu.Text = "CPU: 39.6% (Cutoff: 3.5%)";
+                if (activityMeter != null)
+                {
+                    activityMeter.UpdateState(39.6, 3.5, true, 0.0, "⚠️ Pegged Task Detected: 39.6% CPU Load (Auto-Kill Enabled)");
+                }
+                lblWatchdogTimer.Text = "High CPU runaway task detected! Right-click or use 'End Stuck Process' below.";
+                if (lvwProcesses != null)
+                {
+                    lvwProcesses.Items.Clear();
+
+                    ListViewItem item0 = new ListViewItem("rogue_cmd");
+                    item0.Tag = 9132;
+                    item0.SubItems.Add("9132");
+                    item0.SubItems.Add("24.8%");
+                    item0.SubItems.Add("38.4 MB");
+                    item0.SubItems.Add("🔴 STUCK / High");
+                    item0.SubItems.Add("✓ Tracking");
+                    item0.BackColor = Color.FromArgb(254, 226, 226);
+                    item0.ForeColor = Color.FromArgb(185, 28, 28);
+                    item0.Font = new Font(lvwProcesses.Font, FontStyle.Bold);
+
+                    ListViewItem item1 = new ListViewItem("claude");
+                    item1.Tag = 8120;
+                    item1.SubItems.Add("8120");
+                    item1.SubItems.Add("9.4%");
+                    item1.SubItems.Add("142.5 MB");
+                    item1.SubItems.Add("🟢 Active");
+                    item1.SubItems.Add("✓ Tracking");
+                    item1.BackColor = Color.FromArgb(240, 253, 244);
+                    item1.ForeColor = Color.FromArgb(21, 128, 61);
+                    item1.Font = new Font(lvwProcesses.Font, FontStyle.Bold);
+
+                    ListViewItem item2 = new ListViewItem("node");
+                    item2.Tag = 12440;
+                    item2.SubItems.Add("12440");
+                    item2.SubItems.Add("5.4%");
+                    item2.SubItems.Add("98.2 MB");
+                    item2.SubItems.Add("🟢 Active");
+                    item2.SubItems.Add("✓ Tracking");
+                    item2.BackColor = Color.FromArgb(240, 253, 244);
+                    item2.ForeColor = Color.FromArgb(21, 128, 61);
+                    item2.Font = new Font(lvwProcesses.Font, FontStyle.Bold);
+
+                    ListViewItem item3 = new ListViewItem("python");
+                    item3.Tag = 6520;
+                    item3.SubItems.Add("6520");
+                    item3.SubItems.Add("0.0%");
+                    item3.SubItems.Add("45.1 MB");
+                    item3.SubItems.Add("⚪ Idle");
+                    item3.SubItems.Add("✓ Tracking");
+                    item3.BackColor = Color.White;
+                    item3.ForeColor = Color.FromArgb(71, 85, 105);
+
+                    ListViewItem item4 = new ListViewItem("git");
+                    item4.Tag = 9180;
+                    item4.SubItems.Add("9180");
+                    item4.SubItems.Add("0.0%");
+                    item4.SubItems.Add("12.4 MB");
+                    item4.SubItems.Add("⚪ Idle");
+                    item4.SubItems.Add("✓ Tracking");
+                    item4.BackColor = Color.FromArgb(248, 250, 252);
+                    item4.ForeColor = Color.FromArgb(71, 85, 105);
+
+                    lvwProcesses.Items.Add(item0);
+                    lvwProcesses.Items.Add(item1);
+                    lvwProcesses.Items.Add(item2);
+                    lvwProcesses.Items.Add(item3);
+                    lvwProcesses.Items.Add(item4);
+
+                    AdjustProcessListColumns();
+                }
                 Application.DoEvents();
                 string pathWatchdog = Path.Combine(docDir, "01_work_watchdog.png");
                 CaptureForm(this, pathWatchdog);
@@ -1646,20 +2486,27 @@ namespace PowerLockGuard
                     "Windows auto-start, configurable countdown, sound alerts, and real-time event logs.",
                     "SETTINGS & LOGS");
             }
-            catch { }
+            catch (Exception ex)
+            {
+                try { File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "screenshot_error.log"), ex.ToString()); } catch { }
+            }
         }
 
         private static void CaptureForm(Form form, string outputPath)
         {
             try
             {
+                if (File.Exists(outputPath)) { try { File.Delete(outputPath); } catch { } }
                 using (Bitmap bmp = new Bitmap(form.Width, form.Height))
                 {
                     form.DrawToBitmap(bmp, new Rectangle(0, 0, form.Width, form.Height));
                     bmp.Save(outputPath, System.Drawing.Imaging.ImageFormat.Png);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                try { File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "capture_error.log"), ex.ToString()); } catch { }
+            }
         }
 
         private static void CreateStoreAsset(string srcImgPath, string outputPath, string headline, string subheadline, string tag)
@@ -1721,7 +2568,8 @@ namespace PowerLockGuard
                     // Centered form image with card shadow & border
                     if (File.Exists(srcImgPath))
                     {
-                        using (Image src = Image.FromFile(srcImgPath))
+                        using (FileStream fs = new FileStream(srcImgPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                        using (Image src = Image.FromStream(fs))
                         {
                             int imgX = (w - src.Width) / 2;
                             int imgY = 255;
@@ -1740,6 +2588,7 @@ namespace PowerLockGuard
                         }
                     }
 
+                    if (File.Exists(outputPath)) { try { File.Delete(outputPath); } catch { } }
                     canvas.Save(outputPath, System.Drawing.Imaging.ImageFormat.Png);
                 }
             }
