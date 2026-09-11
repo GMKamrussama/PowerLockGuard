@@ -34,6 +34,7 @@
 PowerLockGuard is built by **[GMK Solution](https://gmksolution.com)** — dedicated to creating ultra-lightweight, privacy-first, and zero-telemetry desktop tools that solve real-world productivity problems for software engineers and everyday power users.
 - **Official Website:** [https://gmksolution.com](https://gmksolution.com)
 - **Source Repository:** [https://github.com/GMKamrussama/PowerLockGuard](https://github.com/GMKamrussama/PowerLockGuard)
+- **Microsoft Store:** [https://apps.microsoft.com/detail/9mwlz941129s](https://apps.microsoft.com/detail/9mwlz941129s)
 
 ---
 
@@ -168,7 +169,7 @@ winget install PowerLockGuard
 # Or update anytime
 winget upgrade PowerLockGuard
 ```
-*Or get it directly from the [Microsoft Store Page](https://apps.microsoft.com/detail/PowerLockGuard).*
+*Or get it directly from the [Microsoft Store Page](https://apps.microsoft.com/detail/9mwlz941129s).*
 
 ### ⚙️ Method 3: Run on Windows Startup (1-Click)
 1. Open PowerLockGuard.
@@ -243,7 +244,7 @@ Build.bat
 ## 📥 ডাউনলোড ও ইন্সটলেশন
 
 - 🚀 **[সরাসরি ডাউনলোড করুন: PowerLockGuard.exe](https://github.com/GMKamrussama/PowerLockGuard/releases/latest/download/PowerLockGuard.exe)**
-- 🛒 **[মাইক্রোসফট স্টোর থেকে ইনস্টল করুন](https://apps.microsoft.com/detail/PowerLockGuard)**
+- 🛒 **[মাইক্রোসফট স্টোর থেকে ইনস্টল করুন](https://apps.microsoft.com/detail/9mwlz941129s)**
 - 💻 **উইন্ডোজ টার্মিনালে কমান্ড:**
   ```powershell
   winget install PowerLockGuard
