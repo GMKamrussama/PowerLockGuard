@@ -6,6 +6,7 @@ Keeps .NET Framework 4.0 / WinForms and adds safety controls and recording-only 
 
 - CPU load no longer proves a stuck process or authorizes automatic termination. Legacy automatic-kill settings are disabled.
 - Countdown close defaults to cancellation; resumed activity, invalid samples and settings changes invalidate actions. Execution requires fresh observations.
+- Local finalization follow-up: automatic watchdog action also requires keyboard/mouse inactivity for the configured grace. Unknown/recent input blocks it; resumed input cancels the countdown. Explicit Execute Now is manual but still revalidates CPU/sample state. Check the latest PR checks for hosted validation of this follow-up.
 - CPU history, ignore and manual termination identify instances by PID + start time. Manual termination remains confirmed and rejects replacement/exit.
 - Unknown/warming/partial samples cannot advance idle. Activity after enabling arms the watchdog. Monotonic timing replaces per-poll inflation; tray/form toggles share reset behavior and resume disarms.
 - Charger Online/Offline/Unknown and debounce prevent false unplug actions.
@@ -26,3 +27,13 @@ Keeps .NET Framework 4.0 / WinForms and adds safety controls and recording-only 
 INI keys/actions/modes remain. Matching is exact and ignore is instance-specific. Shipped Windows startup is disabled. The stale committed executable is removed; new binaries are local outputs or CI candidates.
 
 CPU inactivity remains a heuristic, with no verified Codex/Claude completion integration. S3, zero sleep battery usage, exact unplug latency, network continuation and token preservation are not guaranteed. Confirmed charger actions intentionally bypass watchdog countdown. No real process kill or hardware power transition validates this candidate. The PR does not publish a release or deploy Store packaging.
+
+## Test results and upgrade notes
+
+Published PR source d829004 has hosted 37/37 passing assertions per Debug/Release configuration. Local implementation e45eed7 has 40/40 per configuration, plus both solution builds and Build.bat. See [TEST_RESULTS](docs/TEST_RESULTS.md) for the exact snapshots and untested integrations. Hosted results for the new PR head are tracked in the PR checks.
+
+Keep a backup of your old INI before upgrading; the legacy automatic-kill key is disabled rather than honored. Name matching is exact and ignore is per instance. Review charger protection before starting live mode: shipped config enables it, and confirmed-unplug requests bypass the watchdog countdown. Failed settings writes are logged and cannot be assumed persisted.
+
+Start with `--dry-run` under `POWERLOCKGUARD_NO_NATIVE_ACTIONS=1`. Do not double-click an unflagged candidate for a safe demo. Manual termination and live power actions can interrupt useful or unsaved work even with these guards. Review any exported process/event log before sharing.
+
+Publication recommendation: label the first owner-approved candidate as a **pre-release**, since hardware power behavior, physical sensor integration and a broad OS matrix remain unverified. Local candidate binaries are unsigned. No tag, asset upload or release publication is authorized by preparing these notes.

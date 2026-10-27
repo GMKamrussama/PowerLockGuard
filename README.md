@@ -1,4 +1,6 @@
-# PowerLockGuard v1.1.0
+# PowerLockGuard v1.1.0 release candidate
+
+**Release status:** v1.1 is under review in [PR #1](https://github.com/GMKamrussama/PowerLockGuard/pull/1). The [published release](https://github.com/GMKamrussama/PowerLockGuard/releases/tag/v1.0.0) is still v1.0.0. This branch is not a signed or published v1.1 release.
 
 Offline Windows CPU inactivity watchdog and confirmed charger-disconnect power actions. C# / WinForms, .NET Framework 4.0. By [GMK Solution](https://gmksolution.com) · [Source](https://github.com/GMKamrussama/PowerLockGuard) · MIT.
 
@@ -9,6 +11,7 @@ Offline Windows CPU inactivity watchdog and confirmed charger-disconnect power a
 - High CPU remains activity telemetry. Automatic termination is disabled, including legacy INI configurations. Confirmed manual termination verifies PID + start time and may still lose unsaved work.
 - Watchdog arming requires valid observed activity after enabling. No targets at startup, warming samples, partial observations and read failures cannot start a countdown.
 - X/Alt+F4, Cancel, Esc and Space cancel the countdown. Returning activity/settings changes invalidate it; execution requires a fresh sample.
+- The finalization follow-up requires keyboard/mouse inactivity for the configured grace before automatic watchdog action. Recent/unavailable input readings block automatic action. Explicit Execute Now is manual and still revalidates CPU/sample eligibility. Charger protection retains its independent unplug behavior.
 - Charger Online/Offline/Unknown states and 500 ms offline debounce prevent Unknown/bounce from triggering. One confirmed unplug gives one request until reconnect.
 - Shutdown does not force-close applications. Unsupported actions are rejected; failures and submitted requests are logged separately.
 - Monotonic timing, instance-specific ignore, validated/atomic settings, bounded/exportable logs and deterministic resource disposal.
@@ -22,6 +25,8 @@ Build first, then run:
 ```
 
 The title says **SIMULATION**. Inputs are synthetic: a simulated Codex process is busy for eight seconds, then CPU-inactive; charger defaults to Unknown. All manual, tray and automatic actions use a recording executor. Startup shortcuts and production configuration are unchanged.
+
+In the dry-run UI, enabling the watchdog restarts the synthetic workload. Choose a one-minute buffer for a shorter demonstration. Use Settings & Logs → Test Warning Dialog to preview cancellation without waiting for the buffer. The current Windows session's real user-input sensor is not read in simulation; the input policy is tested with scripted readings.
 
 For deterministic headless evidence:
 
@@ -40,7 +45,7 @@ The `POWERLOCKGUARD_NO_NATIVE_ACTIONS=1` interlock forbids production action ada
 
 Without simulation flags the app uses real process observations and Windows power APIs. The shipped config enables Charger Guard, disables Work Watchdog and disables Windows startup. Review charger protection before leaving the app running.
 
-For Work Watchdog, choose mode/action/cutoff/buffer and enable it while the selected workload is active. A fresh CPU baseline and observed activity are required before arming. Continuous healthy inactivity leads to a warning countdown. Cancel if work continues. After one action attempt, including failure, the watchdog pauses; explicitly re-enable for the next workload and inspect the log.
+For Work Watchdog, choose mode/action/cutoff/buffer and enable it while the selected workload is active. A fresh CPU baseline and observed activity are required before arming. Continuous healthy CPU inactivity and sufficient keyboard/mouse inactivity lead to a warning countdown. New input cancels automatic eligibility. Explicit Execute Now is a manual action: its own mouse click does not prevent it, but the final process sample must still be eligible. After one action attempt, including failure, the watchdog pauses; explicitly re-enable for the next workload and inspect the log.
 
 Matching is case-insensitive **exact process name**, with optional `.exe` for custom targets. Broad substring matching was removed for safety: `python` does not include `pythonw`, and `code` does not include every name containing `code`. Ignore applies only to the selected instance, not every same-name process or a reused PID.
 
@@ -70,12 +75,24 @@ Add `-CheckMSBuild` with MSBuild on PATH to check solution builds too. The scrip
 
 GitHub Actions runs this on `windows-2022`, including solution builds. The `safety-evidence` artifact contains reports, scenario logs, a UI render, candidate executables/config/icon and SHA256 hashes. Failures return nonzero. The stale source-controlled v1.0 executable is removed from this branch; build locally or inspect CI candidates. Artifacts are not a signed/published release.
 
-See the [regression suite](tests/SafetyTests.cs) and [release notes](RELEASE_NOTES_v1.1.0.md). Hardware power transitions and live agent completion remain outside simulation evidence.
+## Tested behavior and evidence
+
+The earlier PR snapshot `d829004` has hosted Windows evidence for **37 passing tests per configuration**. The finalization implementation (original local commit `e45eed7`, integrated as `73ab1e9`) has **40 passing tests per configuration** locally, including the user-input follow-up, plus Debug/Release solution builds and Build.bat. Hosted validation of the new PR head must be checked in [PR checks](https://github.com/GMKamrussama/PowerLockGuard/pull/1/checks). Counts identify these specific snapshots, not a coverage percentage or hardware certification.
+
+Read the [Codex case study](docs/CODEX_CASE_STUDY.md), [test matrix and exact evidence](docs/TEST_RESULTS.md), [Bengali tutorial](docs/TUTORIAL_BN.md), [regression suite](tests/SafetyTests.cs) and [release notes](RELEASE_NOTES_v1.1.0.md). Hardware power transitions, physical input-sensor behavior and live agent completion remain outside simulation evidence.
+
+## Screenshots
+
+New simulation renders are generated in the ignored test artifacts and are excluded from this source-only update. [Earlier watchdog](docs/screenshots/01_work_watchdog.png) and [charger](docs/screenshots/02_charger_guard.png) screenshots remain as legacy v1.0 references; their labels do not describe v1.1 behavior.
 
 ## বাংলা
 
 PowerLockGuard CPU inactivity দেখে; Codex বা অন্য agent-এর কাজ শেষ হওয়া নিশ্চিত করে না। উচ্চ CPU বৈধ কাজ হতে পারে, তাই auto-kill বন্ধ। প্রথমে `--dry-run` ব্যবহার করুন—synthetic input ও recording executor থাকায় আসল sleep/shutdown/kill হবে না।
 
 বাস্তবে চালানোর আগে Charger Guard দেখুন: নিশ্চিত disconnect হলে এটি watchdog countdown ছাড়াই action request করে। Watchdog enable-এর পর valid activity দেখে arm হয়; Unknown/failed sample idle সময় বাড়ায় না। Countdown বন্ধ করা, Cancel/Esc/Space, নতুন activity ও settings পরিবর্তনে pending action বাতিল হয়।
+
+নতুন local follow-up-এ automatic watchdog action-এর আগে keyboard/mouse inactivity-ও যাচাই হয়। নতুন input বা input telemetry না পাওয়া গেলে automatic action আটকায়। Explicit Execute Now manual সিদ্ধান্ত; সেখানেও fresh CPU/sample যাচাই থাকে। Charger Guard-এর স্বাধীন unplug action এই নিয়মে পরিবর্তিত হয়নি।
+
+এটি v1.1 release candidate; প্রকাশিত release এখনো v1.0.0। PR-এর `d829004`-এ hosted Windows test ৩৭টি করে পাস করেছে; local `e45eed7`-এ নতুন regression-সহ ৪০টি করে পাস করেছে। নতুন local পরিবর্তনের hosted CI এখনো হয়নি। কোনো বাস্তব sleep/hibernate/shutdown/lock/kill বা physical input-sensor integration এই পরীক্ষার প্রমাণ নয়। Windows sleep state, session বা token preservation নিশ্চিত করা হচ্ছে না। [বাংলা tutorial](docs/TUTORIAL_BN.md) ও [test evidence](docs/TEST_RESULTS.md) পড়ুন।
 
 প্রথম সংস্করণ Antigravity-এর সহায়তায় তৈরি হয়েছিল বলে লেখক জানিয়েছেন। v1.1 safety refinement, regression tests ও simulation workflow Codex-এর সহায়তায় তৈরি হচ্ছে। ফল যাচাই করুন public PR ও CI evidence দেখে।
