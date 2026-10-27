@@ -8,7 +8,7 @@ set CSC=%CSC_64%
 if not exist "%CSC%" set CSC=%CSC_32%
 
 echo Compiling PowerLockGuard v1.1.0...
-"%CSC%" /target:winexe /optimize+ /win32icon:app.ico /out:PowerLockGuard.exe /reference:System.dll,System.Windows.Forms.dll,System.Drawing.dll,System.Core.dll PowerLockGuard.cs AppSettings.cs SafetyCore.cs WindowsAdapters.cs Simulation.cs
+"%CSC%" /target:winexe /optimize+ /win32icon:app.ico /out:PowerLockGuard.exe /reference:System.dll,System.Windows.Forms.dll,System.Drawing.dll,System.Core.dll PowerLockGuard.cs AppSettings.cs SafetyCore.cs WindowsAdapters.cs Simulation.cs FunctionalCore.cs
 
 set BUILD_EXIT=%ERRORLEVEL%
 if %BUILD_EXIT% EQU 0 (

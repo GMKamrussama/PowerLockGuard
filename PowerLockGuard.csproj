@@ -46,6 +46,7 @@
     <Compile Include="SafetyCore.cs" />
     <Compile Include="WindowsAdapters.cs" />
     <Compile Include="Simulation.cs" />
+    <Compile Include="FunctionalCore.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="app.ico" />
