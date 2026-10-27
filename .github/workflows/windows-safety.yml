@@ -1,0 +1,25 @@
+name: Windows safety checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  safety:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1, Node 24
+      - uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3, Node 24
+      - name: Build .NET 4.0 and run recording-only safety checks
+        shell: pwsh
+        env:
+          POWERLOCKGUARD_NO_NATIVE_ACTIONS: '1'
+        run: ./ci/build-and-test.ps1 -CheckMSBuild
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2, Node 24
+        if: always()
+        with:
+          name: safety-evidence
+          path: artifacts/
+          if-no-files-found: error

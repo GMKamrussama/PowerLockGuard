@@ -14,3 +14,16 @@ obj/
 
 # Microsoft Store submission assets & internal packaging drafts
 StorePackaging/
+
+# Local verification outputs
+.ci/
+artifacts/
+PowerLockGuard.candidate.exe
+/PowerLockGuard.exe
+
+# Private preparation and provenance: local only, never publish.
+.private/
+/docs/AMBASSADOR_PREPARATION_BN.md
+/docs/CODEX_BUILD_STORY_BN.md
+/docs/V1_1_VALIDATION.md
+/docs/V1_1_WORK_PLAN.md
