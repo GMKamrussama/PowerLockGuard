@@ -1,6 +1,6 @@
 # Improving a Real Windows Utility with OpenAI Codex: PowerLockGuard v1.1
 
-Prepared 27 October 2026 for the owner-approved source/documentation update to PR #1. The original application was developed with Antigravity assistance, as reported by its owner. This case study concerns subsequent Codex-assisted maintenance. It does not imply OpenAI endorsement. Release publication remains separate.
+Updated 27 October 2026 after PR #1 merged into `master`. The original application was developed with Antigravity assistance, as reported by its owner. This case study concerns subsequent Codex-assisted maintenance. It does not imply OpenAI endorsement. The v1.1 source is merged and automated Windows validation passed; a v1.1 binary release has not been published. Physical power behavior, physical sensors and Codex task completion remain unverified.
 
 ## 1. Problem
 
@@ -26,31 +26,31 @@ No reconstructed prompt is presented as an original transcript. Private session 
 
 Recording-only executors power `--dry-run`, CLI scenarios and screenshot mode. Verification sets an interlock that prevents production action adapters. Configuration is validated and atomically replaced; errors are surfaced. Shutdown no longer force-closes applications. The WinForms architecture and .NET 4.0 API target remain.
 
-A final local audit found that the existing keyboard/mouse helper was not used in watchdog eligibility. Local implementation commit `e45eed7e46eca1a9fe1b8b6b8048927fab26a1b9` adds an injectable input source: recent or unavailable input readings block automatic action, and resumed input cancels its countdown. Explicit Execute Now remains manual while still validating CPU/sample state. The approved PR update integrates this fix as 73ab1e9; check the latest PR checks for hosted validation. A UI-test fixture was also corrected to use the same target selection as the form, so unrelated selection resets cannot make a cancellation assertion pass accidentally.
+A final local audit found that the existing keyboard/mouse helper was not used in watchdog eligibility. Local implementation commit `e45eed7e46eca1a9fe1b8b6b8048927fab26a1b9` adds an injectable input source: recent or unavailable input readings block automatic action, and resumed input cancels its countdown. Explicit Execute Now remains manual while still validating CPU/sample state. The merged PR integrates this fix as 73ab1e9; the post-merge run below verifies its automated tests. A UI-test fixture was also corrected to use the same target selection as the form, so unrelated selection resets cannot make a cancellation assertion pass accidentally.
 
 ## 5. Before and after
 
-| Decision | Baseline | v1.1 candidate / local follow-up |
+| Decision | Baseline | Merged v1.1 |
 |---|---|---|
 | High CPU | Could label stuck and authorize kill | Activity only; no CPU-based automatic kill |
 | Process identity | PID | PID + start time and retained handle check |
 | Failed observation | Could advance idle | Blocks eligibility and resets continuous idle |
 | Countdown close | Could continue toward action | Cancel by default |
-| User input | Helper unused in eligibility | Local follow-up blocks/cancels automatic action |
+| User input | Helper unused in eligibility | Merged follow-up blocks/cancels automatic action |
 | Charger Unknown | Treated as not online | Breaks unplug confirmation |
 | Demonstration | Live timers could remain active | Synthetic/record-only modes and test interlock |
 | Validation | No regression suite in reviewed baseline | Historical hosted 37/configuration; latest verified hosted snapshot 40/configuration |
 
 ## 6. Testing and evidence
 
-- [PR #1](https://github.com/GMKamrussama/PowerLockGuard/pull/1) remains open against master.
-- Latest verified hosted snapshot before this documentation update: [04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa](https://github.com/GMKamrussama/PowerLockGuard/commit/04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa).
-- [Latest verified PR run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503655880) and [push run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503648420): **40 passed, 0 failed in Debug and 40 passed, 0 failed in Release**, including the user-input follow-up; both solution builds and Build.bat passed. Each downloaded configuration report from both runs contains 40 PASS entries. No real power/kill action was performed.
+- [PR #1](https://github.com/GMKamrussama/PowerLockGuard/pull/1) merged into `master` at [70cd1b8ac8ad2441c6ac75b87124aac500ce3f36](https://github.com/GMKamrussama/PowerLockGuard/commit/70cd1b8ac8ad2441c6ac75b87124aac500ce3f36). Its tree matches approved PR head `948a680226dadb89ed8cacfa930132ce1c9ffffb`.
+- [Post-merge Windows run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40509133147): **40 passed, 0 failed in Debug and 40 passed, 0 failed in Release**; both solution builds and Build.bat passed with the native-action interlock enabled. Each downloaded configuration report contains 40 PASS entries. No real power/kill action was performed.
+- Earlier 40-test snapshot [04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa](https://github.com/GMKamrussama/PowerLockGuard/commit/04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa): [PR run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503655880) and [push run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503648420) passed both configurations, solution builds and Build.bat. Each downloaded configuration report from both runs contains 40 PASS entries, including the user-input follow-up.
 - Historical snapshot d829004: [earlier PR run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40495736646) and [earlier push run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40495731233) passed 37 tests per configuration. This is historical evidence, not the current HEAD.
-- [Test source at 04a0fe4](https://github.com/GMKamrussama/PowerLockGuard/blob/04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa/tests/SafetyTests.cs) and [branch test source](../tests/SafetyTests.cs) identify the tested scope. This update changes documentation only; [PR checks](https://github.com/GMKamrussama/PowerLockGuard/pull/1/checks) track subsequent heads.
-- [Codex GitHub review summary](https://github.com/GMKamrussama/PowerLockGuard/pull/1#issuecomment-6440439088) reports completed code review with no findings for d829004. It is not human approval, a security-review completion or proof of absence of defects.
+- [Test source at 04a0fe4](https://github.com/GMKamrussama/PowerLockGuard/blob/04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa/tests/SafetyTests.cs) and [branch test source](../tests/SafetyTests.cs) identify the tested scope. This update changes documentation only; [Windows workflow runs](https://github.com/GMKamrussama/PowerLockGuard/actions/workflows/windows-safety.yml) track subsequent heads.
+- The [Codex GitHub review summary](https://github.com/GMKamrussama/PowerLockGuard/pull/1#issuecomment-6440439088) is a mutable latest-status comment. It now records completed review with no findings for approved head `948a680226dadb89ed8cacfa930132ce1c9ffffb`, following the earlier review of d829004. It is not human approval, a security-review completion or proof of absence of defects.
 - The hosted `safety-evidence` artifact contains test reports, CLI traces, renders and candidate hashes. These were downloaded and inspected; artifacts may require sign-in and have limited retention.
-- [TEST_RESULTS.md](TEST_RESULTS.md) records local follow-up results and limits. Synthetic countdown renders are generated in ignored test artifacts; no new binary image is included in this source-only update.
+- [TEST_RESULTS.md](TEST_RESULTS.md) records historical and post-merge results and limits. Synthetic countdown renders are generated in ignored test artifacts; no new binary image is included in this source-only update.
 
 No real power or process-termination operation was used for validation. Compilation, fake-executor behavior and hardware validation are separate claims.
 
@@ -79,4 +79,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\ci\build-and-test.ps1
 & .\bin\Verification\Release\PowerLockGuard.exe --dry-run
 ```
 
-The GUI must say SIMULATION. Inputs are synthetic; no startup/config mutation occurs. Enable the watchdog to restart its fake workload or preview Settings & Logs → Test Warning Dialog. Inspect `artifacts/Debug/test-results.txt`, `artifacts/Release/test-results.txt` and their CLI logs. Do not double-click an unflagged executable for this demonstration: that starts live mode. The public source/documentation update is owner-approved; PR #1 remains the review boundary.
+The GUI must say SIMULATION. Inputs are synthetic; no startup/config mutation occurs. Enable the watchdog to restart its fake workload or preview Settings & Logs → Test Warning Dialog. Inspect `artifacts/Debug/test-results.txt`, `artifacts/Release/test-results.txt` and their CLI logs. Do not double-click an unflagged executable for this demonstration: that starts live mode. PR #1 is the merged review record; it does not publish a v1.1 binary release.

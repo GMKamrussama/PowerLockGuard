@@ -2,11 +2,13 @@
 
 Keeps .NET Framework 4.0 / WinForms and adds safety controls and recording-only demonstrations.
 
+Source status: [PR #1](https://github.com/GMKamrussama/PowerLockGuard/pull/1) merged into `master` at [70cd1b8ac8ad2441c6ac75b87124aac500ce3f36](https://github.com/GMKamrussama/PowerLockGuard/commit/70cd1b8ac8ad2441c6ac75b87124aac500ce3f36). [Post-merge Windows CI](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40509133147) passed 40 tests / 0 failures per Debug/Release configuration, both solution builds and Build.bat. A v1.1 binary release has not been published. Physical power behavior, physical sensors and Codex task completion remain unverified.
+
 ## Fixes
 
 - CPU load no longer proves a stuck process or authorizes automatic termination. Legacy automatic-kill settings are disabled.
 - Countdown close defaults to cancellation; resumed activity, invalid samples and settings changes invalidate actions. Execution requires fresh observations.
-- Local finalization follow-up: automatic watchdog action also requires keyboard/mouse inactivity for the configured grace. Unknown/recent input blocks it; resumed input cancels the countdown. Explicit Execute Now is manual but still revalidates CPU/sample state. Check the latest PR checks for hosted validation of this follow-up.
+- Merged user-input safety follow-up: automatic watchdog action also requires keyboard/mouse inactivity for the configured grace. Unknown/recent input blocks it; resumed input cancels the countdown. Explicit Execute Now is manual but still revalidates CPU/sample state. The post-merge CI run above verifies its automated tests.
 - CPU history, ignore and manual termination identify instances by PID + start time. Manual termination remains confirmed and rejects replacement/exit.
 - Unknown/warming/partial samples cannot advance idle. Activity after enabling arms the watchdog. Monotonic timing replaces per-poll inflation; tray/form toggles share reset behavior and resume disarms.
 - Charger Online/Offline/Unknown and debounce prevent false unplug actions.
@@ -20,7 +22,7 @@ Keeps .NET Framework 4.0 / WinForms and adds safety controls and recording-only 
 - `--simulate all|watchdog|charger [output-path]`: deterministic headless scenarios.
 - `--capture-screenshots`: simulation-only screenshots.
 - Verification interlock forbids production action adapters in test processes.
-- Windows CI builds Debug/Release against pinned .NET 4.0 references and records regression/CLI/UI evidence. Inspect the actual PR checks/artifacts.
+- Windows CI builds Debug/Release against pinned .NET 4.0 references and records regression/CLI/UI evidence. Inspect the actual Windows workflow runs/artifacts.
 
 ## Compatibility and limits
 
@@ -30,7 +32,7 @@ CPU inactivity remains a heuristic, with no verified Codex/Claude completion int
 
 ## Test results and upgrade notes
 
-Latest verified hosted snapshot before this documentation update: `04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa`, with 40 passed / 0 failed in each Debug/Release configuration in both the [PR run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503655880) and [push run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503648420). Both solution builds and Build.bat passed. Historical d829004 had 37 passing tests per configuration; it is not the current HEAD. See [TEST_RESULTS](docs/TEST_RESULTS.md) for exact evidence and physical-sensor/power limitations, and PR checks for subsequent heads.
+Earlier verified hosted PR snapshot: `04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa`, with 40 passed / 0 failed in each Debug/Release configuration in both the [PR run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503655880) and [push run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503648420). Both solution builds and Build.bat passed. Historical d829004 had 37 passing tests per configuration; it is not the current HEAD. See [TEST_RESULTS](docs/TEST_RESULTS.md) for exact evidence and physical-sensor/power limitations, and Windows workflow runs for subsequent heads.
 
 Keep a backup of your old INI before upgrading; the legacy automatic-kill key is disabled rather than honored. Name matching is exact and ignore is per instance. Review charger protection before starting live mode: shipped config enables it, and confirmed-unplug requests bypass the watchdog countdown. Failed settings writes are logged and cannot be assumed persisted.
 
