@@ -133,6 +133,8 @@ namespace PowerLockGuard
         public ChargerGuard(IClock clock) { this.clock = clock; }
         public void Reset() { armed = false; offlineSince = -1; }
         public bool Observe(ChargerState state, bool enabled)
+        { return Observe(state, enabled, 500); }
+        public bool Observe(ChargerState state, bool enabled, int debounceMilliseconds)
         {
             if (!enabled) { Reset(); return false; }
             if (state == ChargerState.Online) { armed = true; offlineSince = -1; return false; }
@@ -140,7 +142,8 @@ namespace PowerLockGuard
             if (state == ChargerState.Unknown) { Reset(); return false; }
             if (!armed) return false;
             if (offlineSince < 0) { offlineSince = clock.Seconds; return false; }
-            if (clock.Seconds - offlineSince < 0.5) return false;
+            if (debounceMilliseconds < 100 || debounceMilliseconds > 10000) { Reset(); return false; }
+            if (clock.Seconds - offlineSince < debounceMilliseconds / 1000.0) return false;
             Reset();
             return true;
         }

@@ -39,6 +39,7 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Web.Extensions" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="PowerLockGuard.cs" />
@@ -47,6 +48,7 @@
     <Compile Include="WindowsAdapters.cs" />
     <Compile Include="Simulation.cs" />
     <Compile Include="FunctionalCore.cs" />
+    <Compile Include="TaskMonitoring.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="app.ico" />

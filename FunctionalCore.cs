@@ -88,7 +88,12 @@ namespace PowerLockGuard
             // Keep ownership even if Set fails, so Close failures remain retryable at cleanup.
             handle = created;
             try { native.SetSystemRequired(handle); active = true; }
-            catch { try { native.Close(handle); handle = IntPtr.Zero; } catch { } throw; }
+            catch (Exception setError)
+            {
+                try { native.Close(handle); handle = IntPtr.Zero; }
+                catch (Exception cleanup) { throw new InvalidOperationException(setError.Message + "; power request cleanup failed: " + cleanup.Message, setError); }
+                throw;
+            }
         }
         public void Release()
         {
