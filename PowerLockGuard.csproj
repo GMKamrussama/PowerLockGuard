@@ -42,6 +42,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="PowerLockGuard.cs" />
+    <Compile Include="AppSettings.cs" />
+    <Compile Include="SafetyCore.cs" />
+    <Compile Include="WindowsAdapters.cs" />
+    <Compile Include="Simulation.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="app.ico" />
