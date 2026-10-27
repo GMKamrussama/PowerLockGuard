@@ -14,7 +14,7 @@ The follow-up is based on d829004 and is integrated as 73ab1e9 for the approved 
 ## Commands and reports
 
 ```powershell
-$env:PATH = 'C:\Windows\Microsoft.NET\Framework\v4.0.30319;' + $env:PATH
+$env:PATH = (Join-Path $env:WINDIR 'Microsoft.NET/Framework/v4.0.30319') + ';' + $env:PATH
 powershell -NoProfile -ExecutionPolicy Bypass -File .\ci\build-and-test.ps1 -CheckMSBuild
 ```
 
@@ -47,3 +47,5 @@ Hosted evidence: [PR run 40495736646](https://github.com/GMKamrussama/PowerLockG
 `all` exercises synthetic high CPU, observed inactivity, a would-Sleep watchdog request, Unknown charger suppression and confirmed unplug recording; automatic termination is rejected. `watchdog` and `charger` restrict that trace. Headless policy uses virtual time; it does not pretend to be a 30-second real countdown. Countdown assertions use WinForms with recording executors. Native-action zero output is corroborated by adapter confinement and the verification interlock, not treated as a standalone instrumentation proof.
 
 No original release binary was executed. Tests did not call real Process.Kill or sleep/hibernate/shutdown/lock. Simulation does not establish completion of a Codex task, S3 support, network/token preservation, signed provenance, battery benchmarks or physical power-state success. Do not enable live mode while recording this evidence. Do not publish raw session logs, private application answers or machine/account identifiers with artifacts.
+
+The source-only PR integration at 73ab1e9 was rechecked in a separate clean worktree before push: Debug 40/0, Release 40/0, both solution builds and Build.bat passed with the native-action interlock enabled. Subsequent documentation edits do not change those application/test sources.
