@@ -1,6 +1,6 @@
 # Codex দিয়ে একটি বাস্তব Windows সফটওয়্যারের নিরাপত্তা সমস্যা কীভাবে সমাধান করলাম
 
-মালিকের অনুমোদিত public technical documentation। v1.1 এখনো candidate; PR #1 merge বা release প্রকাশের অনুমোদন দেওয়া হয়নি।
+মালিকের অনুমোদিত public technical documentation। [PR #1](https://github.com/GMKamrussama/PowerLockGuard/pull/1) থেকে v1.1 source `master`-এ [70cd1b8ac8ad2441c6ac75b87124aac500ce3f36](https://github.com/GMKamrussama/PowerLockGuard/commit/70cd1b8ac8ad2441c6ac75b87124aac500ce3f36) commit-এ merge হয়েছে। Automated Windows validation সম্পন্ন; v1.1 binary release এখনো প্রকাশিত হয়নি। বাস্তব power transition, physical sensor ও Codex task completion অযাচাইকৃত।
 
 ## সমস্যাটি কী ছিল
 
@@ -46,7 +46,9 @@ Get-Content .\artifacts\simulation.log
 
 ## কোন evidence আছে
 
-[PR #1](https://github.com/GMKamrussama/PowerLockGuard/pull/1)-এর historical `d829004` snapshot-এ Debug/Release-এ ৩৭টি করে test পাস করেছিল। সর্বশেষ যাচাইকৃত hosted snapshot `04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa`-এর [PR run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503655880) ও [push run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503648420)-এ Debug/Release প্রতিটিতে ৪০টি পাস, ০ ব্যর্থ; solution builds ও Build.bat-ও পাস। Download করা চারটি configuration report-এর প্রতিটিতে ৪০টি PASS entry যাচাই করা হয়েছে। এই documentation update application/test source বদলায় না; পরের head-এর ফল [PR checks](https://github.com/GMKamrussama/PowerLockGuard/pull/1/checks)-এ দেখুন। বিস্তারিত [test matrix](TEST_RESULTS.md) ও [case study](CODEX_CASE_STUDY.md)-তে আছে।
+Merged `70cd1b8` snapshot-এর [post-merge Windows CI](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40509133147)-তে Debug/Release প্রতিটিতে ৪০টি পাস, ০ ব্যর্থ। Download করা দুই report-এর প্রতিটিতে ৪০টি PASS entry আছে; solution builds ও Build.bat পাস এবং native-action interlock সক্রিয় ছিল। এটি source merge ও automated validation-এর প্রমাণ; v1.1 binary প্রকাশ বা hardware validation-এর প্রমাণ নয়।
+
+[PR #1](https://github.com/GMKamrussama/PowerLockGuard/pull/1)-এর historical `d829004` snapshot-এ Debug/Release-এ ৩৭টি করে test পাস করেছিল। আগের যাচাইকৃত hosted snapshot `04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa`-এর [PR run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503655880) ও [push run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503648420)-এ Debug/Release প্রতিটিতে ৪০টি পাস, ০ ব্যর্থ; solution builds ও Build.bat-ও পাস। Download করা চারটি configuration report-এর প্রতিটিতে ৪০টি PASS entry যাচাই করা হয়েছে। এই documentation update application/test source বদলায় না; পরের head-এর ফল [Windows workflow runs](https://github.com/GMKamrussama/PowerLockGuard/actions/workflows/windows-safety.yml)-এ দেখুন। বিস্তারিত [test matrix](TEST_RESULTS.md) ও [case study](CODEX_CASE_STUDY.md)-তে আছে।
 
 কোনো বাস্তব sleep, hibernate, shutdown, lock বা process kill দিয়ে পরীক্ষা করা হয়নি। Physical charger/input sensor, S3/Modern Standby, session/token preservation এবং দীর্ঘমেয়াদি resource ব্যবহার এখনো অযাচাইকৃত। Unsigned candidate-কে signed release বলা হচ্ছে না।
 

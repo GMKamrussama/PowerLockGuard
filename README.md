@@ -1,6 +1,6 @@
 # PowerLockGuard v1.1.0 release candidate
 
-**Release status:** v1.1 is under review in [PR #1](https://github.com/GMKamrussama/PowerLockGuard/pull/1). The [published release](https://github.com/GMKamrussama/PowerLockGuard/releases/tag/v1.0.0) is still v1.0.0. This branch is not a signed or published v1.1 release.
+**Release status:** v1.1 source was merged into `master` through [PR #1](https://github.com/GMKamrussama/PowerLockGuard/pull/1) at [70cd1b8ac8ad2441c6ac75b87124aac500ce3f36](https://github.com/GMKamrussama/PowerLockGuard/commit/70cd1b8ac8ad2441c6ac75b87124aac500ce3f36). [Post-merge Windows CI passed](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40509133147). A v1.1 binary release has not been published; the [published release](https://github.com/GMKamrussama/PowerLockGuard/releases/tag/v1.0.0) is still v1.0.0. Automated validation does not verify physical power behavior, physical sensors or Codex task completion.
 
 Offline Windows CPU inactivity watchdog and confirmed charger-disconnect power actions. C# / WinForms, .NET Framework 4.0. By [GMK Solution](https://gmksolution.com) · [Source](https://github.com/GMKamrussama/PowerLockGuard) · MIT.
 
@@ -77,7 +77,7 @@ GitHub Actions runs this on `windows-2022`, including solution builds. The `safe
 
 ## Tested behavior and evidence
 
-The latest verified hosted snapshot before this documentation update is `04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa`: **40 passed / 0 failed in each Debug and Release configuration**, including the user-input follow-up. Both solution builds and Build.bat passed in the [PR run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503655880) and [push run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503648420). Historical snapshot `d829004` passed 37 tests per configuration; it is not the current HEAD. These counts are not a coverage percentage or hardware certification. See [PR checks](https://github.com/GMKamrussama/PowerLockGuard/pull/1/checks) for subsequent heads.
+The merged snapshot `70cd1b8ac8ad2441c6ac75b87124aac500ce3f36` passed [post-merge Windows CI](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40509133147): **40 passed / 0 failed in each Debug and Release configuration**, both solution builds and Build.bat passed, with the native-action interlock enabled. Historical snapshot `d829004` passed 37 tests per configuration; `04a0fe4` passed 40 in its [PR run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503655880) and [push run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503648420). These counts are not a coverage percentage or hardware certification. See [Windows workflow runs](https://github.com/GMKamrussama/PowerLockGuard/actions/workflows/windows-safety.yml) for subsequent heads.
 
 Read the [Codex case study](docs/CODEX_CASE_STUDY.md), [test matrix and exact evidence](docs/TEST_RESULTS.md), [Bengali tutorial](docs/TUTORIAL_BN.md), [regression suite](tests/SafetyTests.cs) and [release notes](RELEASE_NOTES_v1.1.0.md). Hardware power transitions, physical input-sensor behavior and live agent completion remain outside simulation evidence.
 
@@ -91,8 +91,8 @@ PowerLockGuard CPU inactivity দেখে; Codex বা অন্য agent-এ�
 
 বাস্তবে চালানোর আগে Charger Guard দেখুন: নিশ্চিত disconnect হলে এটি watchdog countdown ছাড়াই action request করে। Watchdog enable-এর পর valid activity দেখে arm হয়; Unknown/failed sample idle সময় বাড়ায় না। Countdown বন্ধ করা, Cancel/Esc/Space, নতুন activity ও settings পরিবর্তনে pending action বাতিল হয়।
 
-নতুন local follow-up-এ automatic watchdog action-এর আগে keyboard/mouse inactivity-ও যাচাই হয়। নতুন input বা input telemetry না পাওয়া গেলে automatic action আটকায়। Explicit Execute Now manual সিদ্ধান্ত; সেখানেও fresh CPU/sample যাচাই থাকে। Charger Guard-এর স্বাধীন unplug action এই নিয়মে পরিবর্তিত হয়নি।
+Merged v1.1-এ automatic watchdog action-এর আগে keyboard/mouse inactivity-ও যাচাই হয়। নতুন input বা input telemetry না পাওয়া গেলে automatic action আটকায়। Explicit Execute Now manual সিদ্ধান্ত; সেখানেও fresh CPU/sample যাচাই থাকে। Charger Guard-এর স্বাধীন unplug action এই নিয়মে পরিবর্তিত হয়নি।
 
-এটি v1.1 release candidate; প্রকাশিত release এখনো v1.0.0। Historical `d829004`-এ hosted Windows test ৩৭টি করে পাস করেছিল। সর্বশেষ যাচাইকৃত `04a0fe4`-এর PR ও push CI-তে Debug/Release প্রতিটিতে ৪০টি পাস, ০ ব্যর্থ। পরের head-এর ফল [PR checks](https://github.com/GMKamrussama/PowerLockGuard/pull/1/checks)-এ দেখুন। বাস্তব power transition, physical sensor এবং Codex task completion যাচাই করা হয়নি। Windows sleep state, session বা token preservation নিশ্চিত করা হচ্ছে না। [বাংলা tutorial](docs/TUTORIAL_BN.md) ও [test evidence](docs/TEST_RESULTS.md) পড়ুন।
+v1.1 source `70cd1b8` commit-এ `master`-এ merge হয়েছে; v1.1 binary release প্রকাশিত হয়নি, প্রকাশিত release এখনো v1.0.0। [Post-merge Windows CI](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40509133147)-তে Debug/Release প্রতিটিতে ৪০টি পাস, ০ ব্যর্থ। Historical `d829004`-এ ৩৭টি এবং `04a0fe4`-এ ৪০টি করে পাস করেছিল। বাস্তব power transition, physical sensor এবং Codex task completion যাচাই করা হয়নি। Windows sleep state, session বা token preservation নিশ্চিত করা হচ্ছে না। [বাংলা tutorial](docs/TUTORIAL_BN.md) ও [test evidence](docs/TEST_RESULTS.md) পড়ুন।
 
-প্রথম সংস্করণ Antigravity-এর সহায়তায় তৈরি হয়েছিল বলে লেখক জানিয়েছেন। v1.1 safety refinement, regression tests ও simulation workflow Codex-এর সহায়তায় তৈরি হচ্ছে। ফল যাচাই করুন public PR ও CI evidence দেখে।
+প্রথম সংস্করণ Antigravity-এর সহায়তায় তৈরি হয়েছিল বলে লেখক জানিয়েছেন। Merged v1.1 safety refinement, regression tests ও simulation workflow Codex-এর সহায়তায় তৈরি হয়েছে। ফল যাচাই করুন public PR ও CI evidence দেখে।
