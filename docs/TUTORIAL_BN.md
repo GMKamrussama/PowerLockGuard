@@ -1,5 +1,9 @@
 # Codex দিয়ে একটি বাস্তব Windows সফটওয়্যারের নিরাপত্তা সমস্যা কীভাবে সমাধান করলাম
 
+স্থানীয় follow-up (`feature/core-functionality`, base `c827aa8`): keep-awake lease, suspend privilege handling, configurable charger debounce এবং bounded task monitoring যোগ হয়েছে। Debug ও Release প্রতিটিতে **৬৬টি পাস, ০ ব্যর্থ**; দুই solution build ও Build.bat পাস। এগুলো fake adapter, scripted UI এবং lifecycle/JSON fixture-এর ফল। বাস্তব Sleep/Hibernate, AC sensor বা Codex API session চালানো হয়নি; এই branch push/merge/release হয়নি। নিচের hosted ৩৭/৪০-test রেকর্ড আগের source-এর ইতিহাস। [কারিগরি বিবরণ](CORE_FUNCTIONALITY.md) ও [হার্ডওয়্যার পরীক্ষার প্রস্তুতি](WINDOWS_ACCEPTANCE.md) আলাদা করে পড়ুন।
+
+Work Watchdog-এ CPU heuristic আগের সীমাবদ্ধতা নিয়েই আছে। Registered tasks mode-এ নিজে চালু করা finite command বা Codex `exec --json` session-এর running handle/lifecycle ব্যবহার হয়; কম CPU মানেই completion নয়। সব registered কাজ সফলভাবে শেষ, healthy monitoring এবং প্রয়োজনীয় inactivity/grace ছাড়া automatic action হয় না। Unknown status automatic action আটকায়; আগে জানা চলমান কাজের keep-awake ধরে রাখা বা ছেড়ে দেওয়ার policy নির্বাচন করা যায়। সাধারণ VS Code/Antigravity window-এর কাজ শেষ শনাক্ত করার integration নেই। Live warning preview-এর সময়ও enabled Charger Guard সক্রিয়; সম্পূর্ণ নিরাপদ প্রদর্শনের জন্য `--dry-run` ব্যবহার করুন।
+
 মালিকের অনুমোদিত public technical documentation। [PR #1](https://github.com/GMKamrussama/PowerLockGuard/pull/1) থেকে v1.1 source `master`-এ [70cd1b8ac8ad2441c6ac75b87124aac500ce3f36](https://github.com/GMKamrussama/PowerLockGuard/commit/70cd1b8ac8ad2441c6ac75b87124aac500ce3f36) commit-এ merge হয়েছে। Automated Windows validation সম্পন্ন; v1.1 binary release এখনো প্রকাশিত হয়নি। বাস্তব power transition, physical sensor ও Codex task completion অযাচাইকৃত।
 
 ## সমস্যাটি কী ছিল

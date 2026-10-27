@@ -1,5 +1,7 @@
 # Improving a Real Windows Utility with OpenAI Codex: PowerLockGuard v1.1
 
+Local follow-up on `feature/core-functionality` (based on `c827aa8`): Codex-assisted restoration adds system-awake lease ownership, suspend privilege activation/restoration, independent configurable charger handling and bounded task observations. Debug and Release each pass **66 tests / 0 failures** locally, including fake-native failure/arbitration and task lifecycle fixtures; both solution builds and Build.bat pass. The owned Codex JSON path has fixture evidence only, not a real Codex session. No physical transition, production API session, push or Store/release update occurred. The merged/hosted records below are historical and do not validate this new code. See the [finding-to-fix matrix](CORE_FUNCTIONALITY.md) and [owner acceptance plan](WINDOWS_ACCEPTANCE.md).
+
 Updated 27 October 2026 after PR #1 merged into `master`. The original application was developed with Antigravity assistance, as reported by its owner. This case study concerns subsequent Codex-assisted maintenance. It does not imply OpenAI endorsement. The v1.1 source is merged and automated Windows validation passed; a v1.1 binary release has not been published. Physical power behavior, physical sensors and Codex task completion remain unverified.
 
 ## 1. Problem

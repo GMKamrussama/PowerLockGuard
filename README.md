@@ -1,5 +1,7 @@
 # PowerLockGuard v1.1.0 release candidate
 
+**Local restoration branch:** unpublished core-functionality work based on `c827aa8` adds Windows system-awake leases, suspend privilege handling, independent configurable charger debounce and bounded registered-task monitoring. Local Debug/Release validation: **66 passed / 0 failed each**, both solution builds and Build.bat passed. No new hosted CI, release, physical transition or production Codex session validates this branch. See [implementation and capability matrix](docs/CORE_FUNCTIONALITY.md), [current/historical results](docs/TEST_RESULTS.md) and [owner acceptance plan](docs/WINDOWS_ACCEPTANCE.md). The merged/hosted records below describe the earlier public snapshot.
+
 **Release status:** v1.1 source was merged into `master` through [PR #1](https://github.com/GMKamrussama/PowerLockGuard/pull/1) at [70cd1b8ac8ad2441c6ac75b87124aac500ce3f36](https://github.com/GMKamrussama/PowerLockGuard/commit/70cd1b8ac8ad2441c6ac75b87124aac500ce3f36). [Post-merge Windows CI passed](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40509133147). A v1.1 binary release has not been published; the [published release](https://github.com/GMKamrussama/PowerLockGuard/releases/tag/v1.0.0) is still v1.0.0. Automated validation does not verify physical power behavior, physical sensors or Codex task completion.
 
 Offline Windows CPU inactivity watchdog and confirmed charger-disconnect power actions. C# / WinForms, .NET Framework 4.0. By [GMK Solution](https://gmksolution.com) · [Source](https://github.com/GMKamrussama/PowerLockGuard) · MIT.
@@ -9,10 +11,11 @@ Offline Windows CPU inactivity watchdog and confirmed charger-disconnect power a
 ## Safety improvements
 
 - High CPU remains activity telemetry. Automatic termination is disabled, including legacy INI configurations. Confirmed manual termination verifies PID + start time and may still lose unsaved work.
-- Watchdog arming requires valid observed activity after enabling. No targets at startup, warming samples, partial observations and read failures cannot start a countdown.
+- CPU-heuristic arming requires valid observed activity after enabling. Registered-task mode instead requires authoritative finite-command completion plus grace and healthy process observations. No registered task, warming/partial samples and unavailable status cannot start an automatic countdown in that mode.
 - X/Alt+F4, Cancel, Esc and Space cancel the countdown. Returning activity/settings changes invalidate it; execution requires a fresh sample.
 - The finalization follow-up requires keyboard/mouse inactivity for the configured grace before automatic watchdog action. Recent/unavailable input readings block automatic action. Explicit Execute Now is manual and still revalidates CPU/sample eligibility. Charger protection retains its independent unplug behavior.
-- Charger Online/Offline/Unknown states and 500 ms offline debounce prevent Unknown/bounce from triggering. One confirmed unplug gives one request until reconnect.
+- Charger Online/Offline/Unknown states and configurable offline debounce (default 500 ms) prevent Unknown/bounce from triggering. One confirmed unplug gives one request until reconnect. Watchdog-only saves, countdown cleanup and warning previews do not disarm it.
+- With Watchdog enabled, system-only keep-awake requests protect confirmed running/waiting tasks and eligible heuristic workloads. Requests are released on completion/disable/exit and before intended Sleep/Hibernate/Shutdown. Native failure is logged; hardware effectiveness is unverified.
 - Shutdown does not force-close applications. Unsupported actions are rejected; failures and submitted requests are logged separately.
 - Monotonic timing, instance-specific ignore, validated/atomic settings, bounded/exportable logs and deterministic resource disposal.
 
@@ -45,13 +48,13 @@ The `POWERLOCKGUARD_NO_NATIVE_ACTIONS=1` interlock forbids production action ada
 
 Without simulation flags the app uses real process observations and Windows power APIs. The shipped config enables Charger Guard, disables Work Watchdog and disables Windows startup. Review charger protection before leaving the app running.
 
-For Work Watchdog, choose mode/action/cutoff/buffer and enable it while the selected workload is active. A fresh CPU baseline and observed activity are required before arming. Continuous healthy CPU inactivity and sufficient keyboard/mouse inactivity lead to a warning countdown. New input cancels automatic eligibility. Explicit Execute Now is a manual action: its own mouse click does not prevent it, but the final process sample must still be eligible. After one action attempt, including failure, the watchdog pauses; explicitly re-enable for the next workload and inspect the log.
+For legacy **CPU heuristic**, choose process mode/action/cutoff/buffer and enable it while the selected workload is active. A fresh CPU baseline and observed activity are required before arming. Continuous healthy CPU inactivity and sufficient keyboard/mouse inactivity lead to a warning countdown; uninstrumented API waits can still look idle. For **Registered tasks**, use an explicit owned finite command or Codex JSON session as described in [CORE_FUNCTIONALITY](docs/CORE_FUNCTIONALITY.md). A running task remains protected even at low CPU; successful completion requires the full configured grace and user inactivity. No registered task means no confirmed completion. Unknown status blocks automatic action; its keep-awake policy is selectable. New work/input cancels automatic eligibility. Explicit Execute Now remains manual and still checks workload/sample eligibility. After one action attempt, including failure, the watchdog pauses; explicitly re-enable and inspect the log.
 
 Matching is case-insensitive **exact process name**, with optional `.exe` for custom targets. Broad substring matching was removed for safety: `python` does not include `pythonw`, and `code` does not include every name containing `code`. Ignore applies only to the selected instance, not every same-name process or a reused PID.
 
-CPU is normalized across logical processors: one busy core on 32 logical processors is approximately 3.125%, below the default 3.5% cutoff. A workload that never crosses the cutoff cannot arm the watchdog. Unmatched work does not keep this watchdog active; low CPU never proves completion.
+CPU is normalized across logical processors: one busy core on 32 logical processors is approximately 3.125%, below the default 3.5% cutoff. A CPU-only workload that never crosses the cutoff cannot arm the legacy heuristic. Registered owned tasks do not need to cross that cutoff to establish activity. Unmatched unregistered work may be missed; low CPU never proves completion.
 
-**Charger actions bypass the watchdog countdown** after confirmed unplug, preserving the intended feature. Disable Charger Guard when this behavior is unsuitable. Polling uses a 500 ms WinForms timer plus a 500 ms offline confirmation window; UI load may delay it. Unknown breaks confirmation. Resume/reconnect require fresh observations.
+**Charger actions bypass the watchdog countdown**, including a warning preview, after confirmed unplug. Disable Charger Guard when this behavior is unsuitable. Polling uses a 500 ms WinForms timer plus configurable debounce (100–10000 ms; default 500 ms), with a power-status message as an additional observation opportunity; UI load may delay it. Unknown breaks confirmation. Watchdog-only configuration errors do not disable a valid charger configuration. Resume/reconnect require fresh observations.
 
 Sleep state depends on Windows/hardware. S3, zero battery drain, preserved network requests and token loss prevention are not guaranteed. API success is not independent physical-state verification. Hibernate/privilege errors appear in the log. Sleep PC Now and End Selected Process require confirmation.
 
@@ -88,6 +91,8 @@ New simulation renders are generated in the ignored test artifacts and are exclu
 ## বাংলা
 
 PowerLockGuard CPU inactivity দেখে; Codex বা অন্য agent-এর কাজ শেষ হওয়া নিশ্চিত করে না। উচ্চ CPU বৈধ কাজ হতে পারে, তাই auto-kill বন্ধ। প্রথমে `--dry-run` ব্যবহার করুন—synthetic input ও recording executor থাকায় আসল sleep/shutdown/kill হবে না।
+
+স্থানীয় restoration branch-এ system keep-awake, suspend privilege handling এবং registered finite task/Codex JSON event parser যোগ হয়েছে। Debug/Release প্রতিটিতে ৬৬টি test পাস, ০ ব্যর্থ; বাস্তব Codex session বা physical Sleep যাচাই হয়নি। CPU heuristic-এর সীমাবদ্ধতা রয়ে গেছে। Registered tasks mode-এ চলমান task কম CPU-তেও protected থাকে; কাজ শেষের পরে grace ও user inactivity লাগে। Warning preview-এর সময়ও enabled Charger Guard সক্রিয় থাকে। [নতুন কাজের বিবরণ](docs/CORE_FUNCTIONALITY.md) এবং [অনুমতি সাপেক্ষ hardware plan](docs/WINDOWS_ACCEPTANCE.md) দেখুন। এই স্থানীয় পরিবর্তন push/release হয়নি।
 
 বাস্তবে চালানোর আগে Charger Guard দেখুন: নিশ্চিত disconnect হলে এটি watchdog countdown ছাড়াই action request করে। Watchdog enable-এর পর valid activity দেখে arm হয়; Unknown/failed sample idle সময় বাড়ায় না। Countdown বন্ধ করা, Cancel/Esc/Space, নতুন activity ও settings পরিবর্তনে pending action বাতিল হয়।
 

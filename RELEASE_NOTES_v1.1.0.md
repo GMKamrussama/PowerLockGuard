@@ -1,5 +1,7 @@
 # PowerLockGuard v1.1.0 candidate
 
+Unpublished local restoration on `feature/core-functionality`, base `c827aa8`: Windows system-only keep-awake requests, SE_SHUTDOWN_NAME handling/restoration, independent charger state and configurable debounce, isolated settings validation, explicit action arbitration and bounded command/Codex JSON observations. Local Debug/Release each pass **66 tests / 0 failures**; both solution builds and Build.bat pass. No new hosted run, real power transition, physical sensor test or production Codex session validates these changes. No release or Store packaging was published/changed. See [CORE_FUNCTIONALITY](docs/CORE_FUNCTIONALITY.md), [TEST_RESULTS](docs/TEST_RESULTS.md) and [manual acceptance plan](docs/WINDOWS_ACCEPTANCE.md). The historical source/CI records below predate this local restoration.
+
 Keeps .NET Framework 4.0 / WinForms and adds safety controls and recording-only demonstrations.
 
 Source status: [PR #1](https://github.com/GMKamrussama/PowerLockGuard/pull/1) merged into `master` at [70cd1b8ac8ad2441c6ac75b87124aac500ce3f36](https://github.com/GMKamrussama/PowerLockGuard/commit/70cd1b8ac8ad2441c6ac75b87124aac500ce3f36). [Post-merge Windows CI](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40509133147) passed 40 tests / 0 failures per Debug/Release configuration, both solution builds and Build.bat. A v1.1 binary release has not been published. Physical power behavior, physical sensors and Codex task completion remain unverified.

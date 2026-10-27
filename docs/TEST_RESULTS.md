@@ -1,5 +1,26 @@
 # PowerLockGuard v1.1 test results
 
+## Current local restoration — unpublished
+
+Branch `feature/core-functionality`, tested implementation commit `4fc957feabcaa94db6b31fb2e3560f631e8b54e5`, base `c827aa8196ab3e4e086ffc27a62e6b3746782fe5`, tested 27 October 2026. Local Windows 10 Home Single Language 10.0.19045, .NET 4.0 reference target and installed legacy compiler 4.8.9232.0:
+
+| Safe gate | Actual result |
+|---|---|
+| Debug deterministic policy/native-fake/UI tests | 66 passed; 0 failed |
+| Release deterministic policy/native-fake/UI tests | 66 passed; 0 failed |
+| Debug and Release CLI `--simulate all` | Passed; native actions invoked: 0 |
+| Debug / Release solution rebuilds | Both passed; 0 warnings, 0 errors |
+| `Build.bat --no-pause` | Passed |
+| Real native lease/privilege/power operations | Not run; verification interlock enabled |
+| Owned process launch / real Codex session / production API | Not run; launch blocked by interlock; outcome/JSON fixtures only |
+| Physical AC sensor / power transition / resume | Not run; scripted fixtures only |
+
+The 26 added tests exercise command outcomes, settings round trips/isolation, native error and cleanup paths, balanced lease ownership, priority/in-flight arbitration, low-CPU running work, all-task completion and grace, unknown/failure policy, resume, malformed/oversized Codex events, launch blocking/argument quoting, and UI charger/countdown integration. Two prior tests now assert the approved corrected behavior: isolated configuration validation and charger protection during warning preview. No baseline test was removed. During development a newly added completion-path fixture failed because its CPU selection key differed from the UI configuration; the fresh final sample correctly reset eligibility. Correcting the fixture made that test pass without weakening the safety gate.
+
+Reports are generated in ignored `artifacts/Debug/test-results.txt`, `artifacts/Release/test-results.txt` and `artifacts/build-evidence.txt`. Full local command/error logs and read-only hardware diagnostics remain private. Expected unknown-option tests emit CLI usage on stderr; that output is not a failed build. No new hosted workflow was started because this work has not been pushed. Existing Windows workflow uses the expanded safe script and all test source files when a future push is separately authorized. See [current capabilities and risks](CORE_FUNCTIONALITY.md) and [NOT RUN hardware scenarios](WINDOWS_ACCEPTANCE.md).
+
+## Historical merged and hosted evidence
+
 Prepared 27 October 2026. Reported pass counts belong to the snapshots below, not every possible configuration or a coverage percentage.
 
 PR #1 is merged into `master` at [70cd1b8ac8ad2441c6ac75b87124aac500ce3f36](https://github.com/GMKamrussama/PowerLockGuard/commit/70cd1b8ac8ad2441c6ac75b87124aac500ce3f36). Automated Windows validation completed; a v1.1 binary release has not been published. Physical power transitions, physical sensors and Codex task completion are not verified.
@@ -13,7 +34,7 @@ PR #1 is merged into `master` at [70cd1b8ac8ad2441c6ac75b87124aac500ce3f36](http
 | Earlier verified PR snapshot | 04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa | GitHub workflow windows-2022, .NET 4.0 references; PR and push runs | 40 passed / 0 failed in Debug; 40 / 0 in Release; both solution builds and Build.bat passed |
 | Local finalization implementation | e45eed7e46eca1a9fe1b8b6b8048927fab26a1b9 | Windows 10 Home Single Language, 10.0.19045; legacy compiler 4.8.9232.0 | 40 passed / 0 failed in Debug; 40 / 0 in Release; both solution builds and Build.bat passed |
 
-The follow-up is based on d829004 and integrated as 73ab1e9. Its application/test sources are unchanged at 04a0fe4. Both hosted runs for 04a0fe4 succeeded; the downloaded Debug and Release reports from each run contain exactly 40 PASS entries and a 40-passed/0-failed summary. This documentation-only update preserves those sources; check [Windows workflow runs](https://github.com/GMKamrussama/PowerLockGuard/actions/workflows/windows-safety.yml) for validation of subsequent heads. The target API references are .NET Framework 4.0 from Microsoft.NETFramework.ReferenceAssemblies.net40 1.0.3; the installed runtime/compiler is newer. No unpatched .NET 4.0 machine or exhaustive OS matrix was tested.
+The historical follow-up is based on d829004 and integrated as 73ab1e9. Its application/test sources are unchanged at 04a0fe4. Both hosted runs for 04a0fe4 succeeded; the downloaded Debug and Release reports from each run contain exactly 40 PASS entries and a 40-passed/0-failed summary. The prior documentation-only update preserved those sources; the current local restoration changes them and is reported separately above. Check [Windows workflow runs](https://github.com/GMKamrussama/PowerLockGuard/actions/workflows/windows-safety.yml) for validation of published heads. The target API references are .NET Framework 4.0 from Microsoft.NETFramework.ReferenceAssemblies.net40 1.0.3; the installed runtime/compiler is newer. No unpatched .NET 4.0 machine or exhaustive OS matrix was tested.
 
 ## Commands and reports
 
