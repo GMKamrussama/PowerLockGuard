@@ -276,7 +276,9 @@ namespace PowerLockGuard
 
         private readonly CountdownDecision decision = new CountdownDecision();
         private Func<bool> eligible;
+        private Func<bool> manualEligible;
         public bool WasCancelled { get { return decision.WasCancelled; } }
+        public bool WasExplicitlyApproved { get; private set; }
 
         public SafetyCountdownForm(string action, int seconds, bool sound)
         {
@@ -290,8 +292,10 @@ namespace PowerLockGuard
 
         public SafetyCountdownForm(string action, int seconds, bool sound, Func<bool> eligible) : this(action, seconds, sound)
         { this.eligible = eligible; }
+        public SafetyCountdownForm(string action, int seconds, bool sound, Func<bool> eligible, Func<bool> manualEligible) : this(action, seconds, sound, eligible)
+        { this.manualEligible = manualEligible; }
 
-        public void CancelPending() { decision.Cancel(); countdownTimer.Stop(); Close(); }
+        public void CancelPending() { WasExplicitlyApproved = false; decision.Cancel(); countdownTimer.Stop(); Close(); }
         private bool StillEligible() { return eligible == null || eligible(); }
         protected override void OnFormClosing(FormClosingEventArgs e)
         { countdownTimer.Stop(); base.OnFormClosing(e); }
@@ -380,7 +384,8 @@ namespace PowerLockGuard
             btnExecuteNow.Cursor = Cursors.Hand;
             btnExecuteNow.Click += (s, e) =>
             {
-                if (!StillEligible()) { CancelPending(); return; }
+                if (!(manualEligible == null ? StillEligible() : manualEligible())) { CancelPending(); return; }
+                WasExplicitlyApproved = true;
                 decision.Approve();
                 countdownTimer.Stop();
                 this.Close();
@@ -506,6 +511,7 @@ namespace PowerLockGuard
         private readonly ActionDispatcher actions;
         private readonly ChargerGuard chargerGuard;
         private readonly IPowerStatusSource powerSource;
+        private readonly IUserActivitySource userActivity;
         private readonly DemoProcessSource demoProcesses;
         private Font processBoldFont;
         private SafetyCountdownForm activeCountdown;
@@ -516,9 +522,10 @@ namespace PowerLockGuard
 
         public MainForm() : this(false) { }
         public MainForm(bool simulation) : this(simulation, new MonotonicClock(), null, null, null) { }
-        public MainForm(bool simulation, IClock clock, IProcessSource processes, IPowerStatusSource power, IActionExecutor executor)
+        public MainForm(bool simulation, IClock clock, IProcessSource processes, IPowerStatusSource power, IActionExecutor executor, IUserActivitySource userActivity = null)
         {
             this.simulation = simulation;
+            this.userActivity = userActivity ?? (simulation ? (IUserActivitySource)new SyntheticUserActivity() : new WindowsUserActivitySource());
             // Simulation cannot accept a production executor, even through dependency injection.
             if (simulation && executor != null && !(executor is RecordingActionExecutor))
                 throw new ArgumentException("Simulation requires a recording executor");
@@ -1352,6 +1359,8 @@ namespace PowerLockGuard
         }
 
         private bool WatchdogEligible()
+        { return WatchdogCpuEligible() && UserActivityPolicy.IsIdle(userActivity, settings.WatchdogGraceMinutes * 60); }
+        private bool WatchdogCpuEligible()
         { return settings.WatchdogEnabled && watchdogEngine.CanAct(settings.WatchdogGraceMinutes * 60); }
 
         private void WatchdogTimer_Tick(object sender, EventArgs e)
@@ -1362,6 +1371,8 @@ namespace PowerLockGuard
             { lastSampleProblem = watchdogEngine.MonitoredProcessSummary; LogActivity(lastSampleProblem); }
             if (watchdogEngine.SampleHealthy) lastSampleProblem = null;
             UpdateTelemetryUI();
+            if (WatchdogCpuEligible() && !UserActivityPolicy.IsIdle(userActivity, settings.WatchdogGraceMinutes * 60))
+                lblWatchdogTimer.Text = "Automatic action blocked: recent or unavailable keyboard/mouse activity.";
             if (!testCountdownActive && activeCountdown != null && !WatchdogEligible()) activeCountdown.CancelPending();
             if (!testCountdownActive && !isCountdownActive && WatchdogEligible()) TriggerCountdownAndAction(false);
         }
@@ -1641,7 +1652,7 @@ namespace PowerLockGuard
             try
             {
                 using (SafetyCountdownForm dlg = new SafetyCountdownForm((simulation || isTest ? "SIMULATION: " : "") + action, settings.CountdownSeconds, settings.PlayAlertSound,
-                    delegate { return isTest || WatchdogEligible(); }))
+                    delegate { return isTest || WatchdogEligible(); }, delegate { return isTest || WatchdogCpuEligible(); }))
                 {
                     activeCountdown = dlg;
                     dlg.ShowDialog(this);
@@ -1655,8 +1666,8 @@ namespace PowerLockGuard
                     }
                     // Take a fresh sample after the dialog closes, before any real action.
                     watchdogEngine.Poll(settings.WatchdogMode, settings.WatchdogTargetProcess, 1000, settings.WatchdogIdleThreshold, true);
-                    if (!WatchdogEligible()) { LogActivity("Action cancelled: activity or sample validity changed."); watchdogEngine.ResetIdleTimer(); return; }
-                    RequestAction(action, ActionOrigin.Watchdog, null);
+                    if (!(dlg.WasExplicitlyApproved ? WatchdogCpuEligible() : WatchdogEligible())) { LogActivity("Action cancelled: activity or sample validity changed."); watchdogEngine.ResetIdleTimer(); return; }
+                    RequestAction(action, dlg.WasExplicitlyApproved ? ActionOrigin.Manual : ActionOrigin.Watchdog, null);
                     // One attempt per arming, including failures; explicit re-enable is required.
                     SetWatchdogEnabled(false);
                 }

@@ -57,6 +57,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "$configuration safety tests failed." }
         # Invoke the reviewed executable only through its pre-UI, recording-only scenario entry point.
         $scenario = Join-Path $resultsDir 'cli-simulation.log'
+        if (Test-Path -LiteralPath $scenario) { Remove-Item -LiteralPath $scenario -Force }
         $process = Start-Process -FilePath $app -ArgumentList @('--simulate', 'all', ('"' + $scenario + '"')) -WindowStyle Hidden -Wait -PassThru
         if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $scenario)) { throw "$configuration CLI simulation failed." }
         if (-not (Select-String -LiteralPath $scenario -SimpleMatch 'Native actions invoked: 0' -Quiet)) { throw 'Missing simulation evidence.' }

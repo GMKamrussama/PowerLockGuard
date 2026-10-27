@@ -20,6 +20,12 @@ internal sealed class ScriptedProcesses : IProcessSource
 }
 internal sealed class ScriptedPower : IPowerStatusSource
 { public ChargerState State = ChargerState.Online; public ChargerState Read() { return State; } }
+internal sealed class ScriptedUser : IUserActivitySource
+{
+    public int Idle = int.MaxValue;
+    public bool Throw;
+    public int IdleSeconds { get { if (Throw) throw new InvalidOperationException("input unavailable"); return Idle; } }
+}
 internal sealed class FakeHandle : IProcessHandle
 {
     public ProcessIdentity Id;
@@ -58,7 +64,7 @@ internal static class SafetyTests
     { return new ProcessObservation { Name = "codex", Identity = new ProcessIdentity(pid, Started.AddSeconds(generation)), CpuTime = TimeSpan.FromSeconds(cpu) }; }
     private static WorkWatchdogEngine Engine(FakeClock c, ScriptedProcesses p, int processors)
     { return new WorkWatchdogEngine(c, p, processors); }
-    private static void Poll(WorkWatchdogEngine e) { e.Poll("AgentsAndBuilds", "", 1000, 3.5); }
+    private static void Poll(WorkWatchdogEngine e) { e.Poll("AgentsAndBuilds", "claude", 1000, 3.5); }
     private static void Active(FakeClock c, ScriptedProcesses p, WorkWatchdogEngine e)
     { c.Advance(1); p.Items.Add(Item(42, 0, 0)); Poll(e); c.Advance(1); p.Items[0].CpuTime = TimeSpan.FromSeconds(1); Poll(e); Assert(e.IsArmed, "must observe activity"); }
     private static void Idle(FakeClock c, WorkWatchdogEngine e, int seconds)
@@ -318,6 +324,37 @@ internal static class SafetyTests
                 ContextMenuStrip menu = (ContextMenuStrip)Field(f, "trayMenu");
                 foreach (ToolStripItem entry in menu.Items) if (entry.Text == "Toggle Work Watchdog") { entry.PerformClick(); entry.PerformClick(); }
                 Assert(!e.IsArmed && e.ConsecutiveIdleSeconds == 0, "tray toggle resets eligibility");
+            }
+        });
+        Test("User input and unavailable telemetry block automatic eligibility", delegate {
+            var input = new ScriptedUser { Idle = 0 };
+            Assert(!UserActivityPolicy.IsIdle(input, 60), "recent input blocks");
+            input.Idle = -1; Assert(!UserActivityPolicy.IsIdle(input, 60), "unknown blocks");
+            input.Throw = true; Assert(!UserActivityPolicy.IsIdle(input, 60), "failure blocks");
+            input.Throw = false; input.Idle = 60; Assert(UserActivityPolicy.IsIdle(input, 60), "boundary permits eligibility");
+        });
+        Test("UI automatic countdown cancels when keyboard or mouse activity resumes", delegate {
+            var recording = new RecordingActionExecutor(); var c = new FakeClock(); var p = new ScriptedProcesses(); var input = new ScriptedUser();
+            using (var f = new MainForm(true, c, p, new ScriptedPower(), recording, input))
+            using (var trigger = new Timer())
+            {
+                f.Show(); var settings = (AppSettings)Field(f, "settings"); settings.WatchdogEnabled = true; settings.WatchdogGraceMinutes = 1; settings.CountdownSeconds = 1;
+                var e = (WorkWatchdogEngine)Field(f, "watchdogEngine"); Active(c, p, e); Idle(c, e, 61);
+                trigger.Interval = 100; trigger.Tick += delegate { trigger.Stop(); input.Idle = 0; Call(f, "WatchdogTimer_Tick", null, EventArgs.Empty); }; trigger.Start();
+                Call(f, "TriggerCountdownAndAction", false);
+                Assert(recording.Requests.Count == 0, "human activity cancels automatic action");
+            }
+        });
+        Test("UI explicit Execute Now remains manual but revalidates CPU", delegate {
+            var recording = new RecordingActionExecutor(); var c = new FakeClock(); var p = new ScriptedProcesses(); var input = new ScriptedUser();
+            using (var f = new MainForm(true, c, p, new ScriptedPower(), recording, input))
+            using (var trigger = new Timer())
+            {
+                f.Show(); var settings = (AppSettings)Field(f, "settings"); settings.WatchdogEnabled = true; settings.WatchdogGraceMinutes = 1; settings.CountdownSeconds = 1;
+                var e = (WorkWatchdogEngine)Field(f, "watchdogEngine"); Active(c, p, e); Idle(c, e, 61);
+                trigger.Interval = 100; trigger.Tick += delegate { trigger.Stop(); c.Advance(1); input.Idle = 0; ButtonWith((Form)Field(f, "activeCountdown"), "Now").PerformClick(); }; trigger.Start();
+                Call(f, "TriggerCountdownAndAction", false);
+                Assert(recording.Requests.Count == 1 && recording.Requests[0].Origin == ActionOrigin.Manual, "explicit approval is a simulated manual request");
             }
         });
         report.Add("Passed: " + passed + "; Failed: " + failed + "; real power/kill calls: none by test design");

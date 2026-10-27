@@ -7,6 +7,8 @@ using System.Windows.Forms;
 
 namespace PowerLockGuard
 {
+    public sealed class WindowsUserActivitySource : IUserActivitySource
+    { public int IdleSeconds { get { return UserInactivityDetector.GetUserIdleSeconds(); } } }
     public sealed class WindowsProcessSource : IProcessSource
     {
         public ProcessSample Read(string mode, string target)

@@ -5,6 +5,17 @@ using System.Diagnostics;
 namespace PowerLockGuard
 {
     public interface IClock { double Seconds { get; } }
+    public interface IUserActivitySource { int IdleSeconds { get; } }
+    public sealed class SyntheticUserActivity : IUserActivitySource
+    { public int IdleSeconds { get { return int.MaxValue; } } }
+    public static class UserActivityPolicy
+    {
+        public static bool IsIdle(IUserActivitySource source, int requiredSeconds)
+        {
+            try { return requiredSeconds > 0 && source != null && source.IdleSeconds >= requiredSeconds; }
+            catch { return false; } // Unavailable input telemetry cannot authorize an automatic action.
+        }
+    }
     public sealed class MonotonicClock : IClock
     {
         private readonly Stopwatch watch = Stopwatch.StartNew();
