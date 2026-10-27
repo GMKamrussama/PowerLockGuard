@@ -30,7 +30,7 @@ CPU inactivity remains a heuristic, with no verified Codex/Claude completion int
 
 ## Test results and upgrade notes
 
-Published PR source d829004 has hosted 37/37 passing assertions per Debug/Release configuration. Local implementation e45eed7 has 40/40 per configuration, plus both solution builds and Build.bat. See [TEST_RESULTS](docs/TEST_RESULTS.md) for the exact snapshots and untested integrations. Hosted results for the new PR head are tracked in the PR checks.
+Latest verified hosted snapshot before this documentation update: `04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa`, with 40 passed / 0 failed in each Debug/Release configuration in both the [PR run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503655880) and [push run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503648420). Both solution builds and Build.bat passed. Historical d829004 had 37 passing tests per configuration; it is not the current HEAD. See [TEST_RESULTS](docs/TEST_RESULTS.md) for exact evidence and physical-sensor/power limitations, and PR checks for subsequent heads.
 
 Keep a backup of your old INI before upgrading; the legacy automatic-kill key is disabled rather than honored. Name matching is exact and ignore is per instance. Review charger protection before starting live mode: shipped config enables it, and confirmed-unplug requests bypass the watchdog countdown. Failed settings writes are logged and cannot be assumed persisted.
 

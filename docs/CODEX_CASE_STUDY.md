@@ -39,14 +39,15 @@ A final local audit found that the existing keyboard/mouse helper was not used i
 | User input | Helper unused in eligibility | Local follow-up blocks/cancels automatic action |
 | Charger Unknown | Treated as not online | Breaks unplug confirmation |
 | Demonstration | Live timers could remain active | Synthetic/record-only modes and test interlock |
-| Validation | No regression suite in reviewed baseline | Hosted 37/configuration; local follow-up 40/configuration |
+| Validation | No regression suite in reviewed baseline | Historical hosted 37/configuration; latest verified hosted snapshot 40/configuration |
 
 ## 6. Testing and evidence
 
 - [PR #1](https://github.com/GMKamrussama/PowerLockGuard/pull/1) remains open against master.
-- [Published candidate commit d829004](https://github.com/GMKamrussama/PowerLockGuard/commit/d8290049c586d01d0c85ed57fc9a89b64d88af30).
-- [Hosted PR run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40495736646) and [push run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40495731233): 37 assertions passed in each Debug/Release configuration; solution and legacy builds passed.
-- [Published test source](https://github.com/GMKamrussama/PowerLockGuard/blob/d8290049c586d01d0c85ed57fc9a89b64d88af30/tests/SafetyTests.cs) and [local test source](../tests/SafetyTests.cs) identify the two scopes.
+- Latest verified hosted snapshot before this documentation update: [04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa](https://github.com/GMKamrussama/PowerLockGuard/commit/04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa).
+- [Latest verified PR run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503655880) and [push run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503648420): **40 passed, 0 failed in Debug and 40 passed, 0 failed in Release**, including the user-input follow-up; both solution builds and Build.bat passed. Each downloaded configuration report from both runs contains 40 PASS entries. No real power/kill action was performed.
+- Historical snapshot d829004: [earlier PR run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40495736646) and [earlier push run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40495731233) passed 37 tests per configuration. This is historical evidence, not the current HEAD.
+- [Test source at 04a0fe4](https://github.com/GMKamrussama/PowerLockGuard/blob/04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa/tests/SafetyTests.cs) and [branch test source](../tests/SafetyTests.cs) identify the tested scope. This update changes documentation only; [PR checks](https://github.com/GMKamrussama/PowerLockGuard/pull/1/checks) track subsequent heads.
 - [Codex GitHub review summary](https://github.com/GMKamrussama/PowerLockGuard/pull/1#issuecomment-6440439088) reports completed code review with no findings for d829004. It is not human approval, a security-review completion or proof of absence of defects.
 - The hosted `safety-evidence` artifact contains test reports, CLI traces, renders and candidate hashes. These were downloaded and inspected; artifacts may require sign-in and have limited retention.
 - [TEST_RESULTS.md](TEST_RESULTS.md) records local follow-up results and limits. Synthetic countdown renders are generated in ignored test artifacts; no new binary image is included in this source-only update.

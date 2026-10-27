@@ -46,7 +46,7 @@ Get-Content .\artifacts\simulation.log
 
 ## কোন evidence আছে
 
-[PR #1](https://github.com/GMKamrussama/PowerLockGuard/pull/1)-এর published `d829004` snapshot-এ Debug ও Release-এ ৩৭টি করে test পাস করেছে। [Hosted Windows run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40495736646) সেই ফল দেখায়। নতুন local `e45eed7` follow-up-এ ৪০টি করে পাস করেছে; রিপোর্ট তৈরির সময় এর hosted CI pending ছিল; বর্তমান ফল [PR checks](https://github.com/GMKamrussama/PowerLockGuard/pull/1/checks)-এ দেখুন। এই দুই ফল এক নয়। বিস্তারিত [test matrix](TEST_RESULTS.md) ও [case study](CODEX_CASE_STUDY.md)-তে আছে।
+[PR #1](https://github.com/GMKamrussama/PowerLockGuard/pull/1)-এর historical `d829004` snapshot-এ Debug/Release-এ ৩৭টি করে test পাস করেছিল। সর্বশেষ যাচাইকৃত hosted snapshot `04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa`-এর [PR run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503655880) ও [push run](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503648420)-এ Debug/Release প্রতিটিতে ৪০টি পাস, ০ ব্যর্থ; solution builds ও Build.bat-ও পাস। Download করা চারটি configuration report-এর প্রতিটিতে ৪০টি PASS entry যাচাই করা হয়েছে। এই documentation update application/test source বদলায় না; পরের head-এর ফল [PR checks](https://github.com/GMKamrussama/PowerLockGuard/pull/1/checks)-এ দেখুন। বিস্তারিত [test matrix](TEST_RESULTS.md) ও [case study](CODEX_CASE_STUDY.md)-তে আছে।
 
 কোনো বাস্তব sleep, hibernate, shutdown, lock বা process kill দিয়ে পরীক্ষা করা হয়নি। Physical charger/input sensor, S3/Modern Standby, session/token preservation এবং দীর্ঘমেয়াদি resource ব্যবহার এখনো অযাচাইকৃত। Unsigned candidate-কে signed release বলা হচ্ছে না।
 

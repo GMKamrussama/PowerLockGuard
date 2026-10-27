@@ -6,10 +6,11 @@ Prepared 27 October 2026. Reported pass counts belong to the snapshots below, no
 
 | Scope | Source SHA | Environment | Observed result |
 |---|---|---|---|
-| Published PR #1 | d8290049c586d01d0c85ed57fc9a89b64d88af30 | GitHub workflow windows-2022, .NET 4.0 references | 37 passed / 0 failed in Debug; 37 / 0 in Release; both solution builds and Build.bat passed |
+| Historical PR snapshot | d8290049c586d01d0c85ed57fc9a89b64d88af30 | GitHub workflow windows-2022, .NET 4.0 references | 37 passed / 0 failed in Debug; 37 / 0 in Release; both solution builds and Build.bat passed |
+| Latest verified hosted snapshot before this documentation update | 04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa | GitHub workflow windows-2022, .NET 4.0 references; PR and push runs | 40 passed / 0 failed in Debug; 40 / 0 in Release; both solution builds and Build.bat passed |
 | Local finalization implementation | e45eed7e46eca1a9fe1b8b6b8048927fab26a1b9 | Windows 10 Home Single Language, 10.0.19045; legacy compiler 4.8.9232.0 | 40 passed / 0 failed in Debug; 40 / 0 in Release; both solution builds and Build.bat passed |
 
-The follow-up is based on d829004 and is integrated as 73ab1e9 for the approved PR update. Documentation-only commits after e45eed7 do not change its tested application/test source. At report preparation, hosted validation for that follow-up was pending; check [current PR checks](https://github.com/GMKamrussama/PowerLockGuard/pull/1/checks) for its current result. The target API references are .NET Framework 4.0 from Microsoft.NETFramework.ReferenceAssemblies.net40 1.0.3; the installed runtime/compiler is newer. No unpatched .NET 4.0 machine or exhaustive OS matrix was tested.
+The follow-up is based on d829004 and integrated as 73ab1e9. Its application/test sources are unchanged at 04a0fe4. Both hosted runs for 04a0fe4 succeeded; the downloaded Debug and Release reports from each run contain exactly 40 PASS entries and a 40-passed/0-failed summary. This documentation-only update preserves those sources; check [current PR checks](https://github.com/GMKamrussama/PowerLockGuard/pull/1/checks) for validation of subsequent heads. The target API references are .NET Framework 4.0 from Microsoft.NETFramework.ReferenceAssemblies.net40 1.0.3; the installed runtime/compiler is newer. No unpatched .NET 4.0 machine or exhaustive OS matrix was tested.
 
 ## Commands and reports
 
@@ -24,7 +25,7 @@ Outputs under ignored `artifacts/Debug/` and `artifacts/Release/` include `test-
 
 The local Release executable built from e45eed7 has SHA256 `9B1DC963323095B8F706A09F0ACEB4DE7B4667BDEC293F096E33B1FE449200F7`. This identifies that build, not a reproducible-build guarantee or signature. A local unsigned candidate bundle includes its own build manifest and file checksums; it has not been uploaded. Future builds may differ in hash even with unchanged source.
 
-Hosted evidence: [PR run 40495736646](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40495736646), [push run 40495731233](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40495731233), [test source at that SHA](https://github.com/GMKamrussama/PowerLockGuard/blob/d8290049c586d01d0c85ed57fc9a89b64d88af30/tests/SafetyTests.cs). Reports in the downloaded artifact were inspected. New local assertions are in [the local suite](../tests/SafetyTests.cs); no hosted URL is claimed for them.
+Latest verified hosted evidence at **04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa**: [PR run 40503655880](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503655880), [push run 40503648420](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503648420), [test source](https://github.com/GMKamrussama/PowerLockGuard/blob/04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa/tests/SafetyTests.cs). Both runs' downloaded `safety-evidence` reports and workflow logs were inspected, including the user-input follow-up. Historical 37-test evidence: [PR run 40495736646](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40495736646) and [push run 40495731233](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40495731233), both at d829004. These historical runs do not describe the current PR head.
 
 ## Verification matrix
 
@@ -33,8 +34,8 @@ Hosted evidence: [PR run 40495736646](https://github.com/GMKamrussama/PowerLockG
 | High CPU does not authorize kill | Sustained CPU and rejected automatic origins | Local + hosted fake readings | Not run | Verified policy |
 | Process identity | PID reuse, exit, self, access denial, retained fake handle | Local + hosted | Real termination not run | Verified policy; production termination unverified |
 | Countdown cancellation | Close, Esc/Space/Cancel, expiry, resumed work, settings/final replacement | WinForms local + hosted | Physical Alt+F4 not automated | Verified UI/code paths |
-| Keyboard/mouse inactivity | Recent/negative/throwing sensor and resumed-input modal test | Local WinForms fakes, 3 new tests | Physical GetLastInputInfo behavior not tested | Verified local follow-up; hosted follow-up pending |
-| Explicit Execute Now | Positive manual request still requires CPU eligibility | Local WinForms fake executor | Real power action not run | Verified local policy |
+| Keyboard/mouse inactivity | Recent/negative/throwing sensor and resumed-input modal test | Local + hosted WinForms fakes; suite includes 3 follow-up tests | Physical GetLastInputInfo behavior not tested | Verified tested policy; physical sensor unverified |
+| Explicit Execute Now | Positive manual request still requires CPU eligibility | Local + hosted WinForms fake executor | Real power action not run | Verified tested policy |
 | Charger | Unknown, startup battery, bounce, debounce, one-shot/reconnect | Local + hosted fake readings | Physical AC unplug not tested | Verified policy; hardware response unverified |
 | Simulation | All action/origin combinations, interlock, actual CLI | Local + hosted synthetic UI/CLI | No real action permitted | Verified recording-only paths |
 | Config | Invalid/overflow/NaN values, legacy keys, atomic replace, failed write, ephemeral no-write | Controlled Windows test files local + hosted | Protected installed folder not manually tested | Verified tested cases |
