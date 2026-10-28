@@ -1,6 +1,12 @@
 # PowerLockGuard v1.1 test results
 
-## Current local restoration — unpublished
+## Current candidate — local, not hosted
+
+Application/test/build source `6568f0de4aa6981e2438a0528d83c0a3d6ab5288`, validated 28 October 2026: **Debug 76 passed / 0 failed; Release 76 passed / 0 failed**; both solution builds zero warnings/errors; Build.bat and safe CLI passed in an isolated source export. Interlock enabled. Documentation-only review preparation preserves those sources; these tests are reused after source-hash verification rather than repeated. [Build hashes, environment and Stage 1 measurements](CORE_REVIEW_EVIDENCE.md).
+
+Original approved build: **OWNER-TESTED: SUCCESS** for charger behavior, input cancellation and Sleep/Resume. New candidate: instrumented native SystemRequired acquisition, Windows-visible request/release, invalid-state rejection and resumed-work cancellation passed. Candidate physical unplug/input/Sleep-Resume and production Codex completion remain unverified. No new hosted CI result is claimed.
+
+## Historical local restoration — 66 tests
 
 Branch `feature/core-functionality`, tested implementation commit `4fc957feabcaa94db6b31fb2e3560f631e8b54e5`, base `c827aa8196ab3e4e086ffc27a62e6b3746782fe5`, tested 27 October 2026. Local Windows 10 Home Single Language 10.0.19045, .NET 4.0 reference target and installed legacy compiler 4.8.9232.0:
 
@@ -17,7 +23,7 @@ Branch `feature/core-functionality`, tested implementation commit `4fc957feabcaa
 
 The 26 added tests exercise command outcomes, settings round trips/isolation, native error and cleanup paths, balanced lease ownership, priority/in-flight arbitration, low-CPU running work, all-task completion and grace, unknown/failure policy, resume, malformed/oversized Codex events, launch blocking/argument quoting, and UI charger/countdown integration. Two prior tests now assert the approved corrected behavior: isolated configuration validation and charger protection during warning preview. No baseline test was removed. During development a newly added completion-path fixture failed because its CPU selection key differed from the UI configuration; the fresh final sample correctly reset eligibility. Correcting the fixture made that test pass without weakening the safety gate.
 
-Reports are generated in ignored `artifacts/Debug/test-results.txt`, `artifacts/Release/test-results.txt` and `artifacts/build-evidence.txt`. Full local command/error logs and read-only hardware diagnostics remain private. Expected unknown-option tests emit CLI usage on stderr; that output is not a failed build. No new hosted workflow was started because this work has not been pushed. Existing Windows workflow uses the expanded safe script and all test source files when a future push is separately authorized. See [current capabilities and risks](CORE_FUNCTIONALITY.md) and [NOT RUN hardware scenarios](WINDOWS_ACCEPTANCE.md).
+Reports are generated in ignored `artifacts/Debug/test-results.txt`, `artifacts/Release/test-results.txt` and `artifacts/build-evidence.txt`. Full local command/error logs and read-only hardware diagnostics remain private. Expected unknown-option tests emit CLI usage on stderr; that output is not a failed build. No new hosted workflow was started because this work has not been pushed. Existing Windows workflow uses the expanded safe script and all test source files when a future push is separately authorized. See [current capabilities and risks](CORE_FUNCTIONALITY.md) and [acceptance scenarios and evidence status](WINDOWS_ACCEPTANCE.md).
 
 ## Historical merged and hosted evidence
 
@@ -53,7 +59,7 @@ The local Release executable built from e45eed7 has SHA256 `9B1DC963323095B8F706
 
 Earlier verified hosted evidence at **04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa**: [PR run 40503655880](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503655880), [push run 40503648420](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40503648420), [test source](https://github.com/GMKamrussama/PowerLockGuard/blob/04a0fe411ba09ab3ee399e2a28e6d88ec2531ffa/tests/SafetyTests.cs). Both runs' downloaded `safety-evidence` reports and workflow logs were inspected, including the user-input follow-up. Historical 37-test evidence: [PR run 40495736646](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40495736646) and [push run 40495731233](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40495731233), both at d829004. These historical runs predate the merged master snapshot.
 
-## Verification matrix
+## Historical public safety-snapshot verification matrix
 
 | Feature | Automated test | Windows validation | Real hardware test | Result |
 |---|---|---|---|---|

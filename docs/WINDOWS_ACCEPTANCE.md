@@ -1,4 +1,8 @@
-# Owner laptop acceptance plan — NOT EXECUTED
+# Owner laptop acceptance checklist and evidence status
+
+Updated 28 October 2026. Original approved binary: **OWNER-TESTED: SUCCESS** for charger, input cancellation and Sleep/Resume, explicitly confirmed by the owner. Those original behaviors are not NOT RUN; detailed timings/native traces were not collected. The newer candidate has instrumented E/F/G/H subsets plus injected C/telemetry evidence. [Build identities and measurements](CORE_REVIEW_EVIDENCE.md).
+
+The original scenario IDs A-H below remain unchanged. Keep owner acceptance, candidate instrumented subsets and future physical testing distinct.
 
 This plan prepares physical testing; it authorizes no Sleep, Hibernate, Shutdown, Lock, process termination or charger unplug test. A separate owner authorization is required before changing power state. Automated fake-adapter results are not physical evidence. Do not use a production AI/API job for these tests.
 
@@ -13,7 +17,7 @@ Record locally, redacting machine/account names before sharing:
 - AC/battery state and battery percentage, supported Hibernate setting, lid/power-button policy and power-request overrides. Do not change these silently.
 - App log with UTC timestamps, physical observation, start/end time, cancellation/input timing and Windows event evidence if available. API request success does not replace observed outcome.
 
-Local preparation snapshot on 27 October 2026: Windows 10 Home Single Language 10.0.19045; read-only `/a` reported S3 available, Hibernate disabled and S0 Low Power Idle unavailable. `/requests` required administrator privileges and was not obtained. This records capability reporting only; no transition, real lease or physical sensor validation was performed. AC/battery conditions must be freshly recorded by the owner at test time; no physical conditions are inferred from this snapshot.
+Local preparation snapshot on 27 October 2026: Windows 10 Home Single Language 10.0.19045; read-only `/a` reported S3 available, Hibernate disabled and S0 Low Power Idle unavailable. `/requests` required administrator privileges and was not obtained. This records capability reporting only; no transition, real lease or physical sensor validation was performed in that initial snapshot. Later candidate native lease visibility/release evidence is recorded separately above. AC/battery conditions must be freshly recorded by the owner at test time; no physical conditions are inferred from this snapshot.
 
 ## Scenarios
 
@@ -32,6 +36,6 @@ No scenario requires killing a process. Do not test real Shutdown/Lock incidenta
 
 ## Result record
 
-For each A–H record: source SHA; binary hash; timestamp/time zone; settings; Windows power capabilities; AC/battery start/end; workload/exit status; lease requests; expected/observed result; native return/error; measured latency and measurement method; PASS/FAIL/BLOCKED/NOT RUN; logs and owner notes. All A–H are currently **NOT RUN**; B is additionally blocked by the preparation machine's disabled Hibernate capability. `/requests` is an outstanding diagnostic prerequisite for lease verification.
+For each A–H record: source SHA; binary hash; timestamp/time zone; settings; Windows power capabilities; AC/battery start/end; workload/exit status; lease requests; expected/observed result; native return/error; measured latency and measurement method; PASS/FAIL/BLOCKED/NOT RUN; logs and owner notes. Original approved build: owner-tested charger/input/Sleep-Resume SUCCESS, without inferring unrecorded checklist steps. Newer candidate: physical A/C, B/D live and genuine-input/physical-resume parts of G remain uninstrumented; E native API/visibility, F completion/release, G resumed-work cancellation and H balanced cleanup subsets passed. Full A-H acceptance remains incomplete. B is blocked by disabled Hibernate. Approved elevated read-only `/requests` showed the candidate-harness request appear/disappear; idle-timeout endurance remains unverified.
 
 Stop immediately on the wrong power action, duplicate request, ignored cancellation, unexpected data loss, failure to resume, missing protection or unexplained persistent lease. Preserve evidence and return to recording-only reproduction. Do not publish or claim hardware acceptance until results have been reviewed.

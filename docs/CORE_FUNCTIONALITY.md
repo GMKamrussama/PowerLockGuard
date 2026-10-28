@@ -1,6 +1,6 @@
-# Local core-functionality restoration
+# Charger Guard, Work Watchdog and Windows keep-awake
 
-Status: local implementation `4fc957feabcaa94db6b31fb2e3560f631e8b54e5`, based on `c827aa8196ab3e4e086ffc27a62e6b3746782fe5`. Not pushed, merged, released or deployed to the Microsoft Store. Historical hosted 37/40-test evidence does not validate these new sources. See [test results](TEST_RESULTS.md) and the [hardware acceptance plan](WINDOWS_ACCEPTANCE.md).
+PowerLockGuard provides independent charger-disconnect protection and work-aware power management. Current application source `6568f0de4aa6981e2438a0528d83c0a3d6ab5288`, based on public master `c827aa8196ab3e4e086ffc27a62e6b3746782fe5`; review preparation changes documentation only. Not pushed, merged, released or deployed to Microsoft Store. See [build identities and evidence](CORE_REVIEW_EVIDENCE.md), [test history](TEST_RESULTS.md) and [acceptance checklist](WINDOWS_ACCEPTANCE.md).
 
 ## Audit findings and changes
 
@@ -12,6 +12,7 @@ Status: local implementation `4fc957feabcaa94db6b31fb2e3560f631e8b54e5`, based o
 | F4: unrelated resets disarm charger | High | Watchdog save and countdown cleanup reset AC arming | `PowerLockGuard.cs`: reset only when charger enable/action/debounce changes; countdown cleanup leaves charger alone; resume refreshes AC | UI settings change during debounce, preview cancellation, reconnect/resume |
 | F5: warning preview suppresses real unplug | High | Preview bypassed charger monitoring | Preview only previews its own countdown. A genuine confirmed charger event cancels the dialog and requests its configured action | UI preview with confirmed fake unplug routes exactly one charger request |
 | F6: watchdog validation disables charger | High | Malformed watchdog-only keys disabled both guards | `AppSettings.cs`: per-feature validation; structural/unreadable configuration still disables both | Old configuration cases updated; new-key round trip and both directions of validation isolation |
+| F7: invalid charger enums entered Offline path | High safety risk at provider boundary | Only Online/Unknown explicitly excluded | Explicit Online/Offline switch; Unknown/default resets and requires fresh Online | Unknown/-1/99, interrupted debounce, recovery, repeats and UI recording dispatch |
 
 ## Action priority and lifecycle
 
@@ -23,7 +24,7 @@ The lease requests **SystemRequired only**: no display request and no Away Mode.
 
 Microsoft documents that [SetSuspendState](https://learn.microsoft.com/en-us/windows/win32/api/powrprof/nf-powrprof-setsuspendstate) needs SE_SHUTDOWN_NAME and distinguishes Sleep from Hibernate. [AdjustTokenPrivileges](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-adjusttokenprivileges) can return success while reporting ERROR_NOT_ALL_ASSIGNED; previous-state capture needs TOKEN_QUERY. The implementation requests only token query/adjust access, does not assume elevation, and does not attempt to grant missing privileges. Native BOOLEAN parameters/results use one-byte marshalling; last errors are captured immediately.
 
-[PowerSetRequest](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-powersetrequest) increments a count; [PowerClearRequest](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-powerclearrequest) decrements it; [PowerCreateRequest](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-powercreaterequest) owns a handle closed at cleanup. These APIs require Windows 7 or later. Missing entry points are logged as failures; .NET Framework 4.0 targeting is retained, not a promise of working idle inhibition on XP. Modern Standby on battery can terminate system/execution requests five minutes after the sleep timeout; user-initiated sleep and policy overrides can also defeat requests. Physical behavior remains untested.
+[PowerSetRequest](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-powersetrequest) increments a count; [PowerClearRequest](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-powerclearrequest) decrements it; [PowerCreateRequest](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-powercreaterequest) owns a handle closed at cleanup. These APIs require Windows 7 or later. Missing entry points are logged as failures; .NET Framework 4.0 targeting is retained, not a promise of working idle inhibition on XP. Modern Standby on battery can terminate system/execution requests five minutes after the sleep timeout; user-initiated sleep and policy overrides can also defeat requests. Original charger/input/Sleep-Resume behavior is owner-tested successfully; candidate native lease/visibility/release is instrumented. Candidate physical transitions and cross-device endurance remain unverified.
 
 ## Observation and provider scope
 
@@ -56,8 +57,8 @@ Resume invalidates completed task evidence, resets CPU baselines, refreshes AC s
 
 ## Validation boundary
 
-All automated action paths use recording/fake adapters with `POWERLOCKGUARD_NO_NATIVE_ACTIONS=1`. It also blocks real lease adapters, privilege activation and owned-task launches during verification. Current local results are recorded separately from historical hosted evidence. This is implemented native functionality awaiting physical validation, not hardware-certified behavior. Store packaging, releases and publication were not changed.
+All automated action paths use recording/fake adapters with `POWERLOCKGUARD_NO_NATIVE_ACTIONS=1`. It also blocks real lease adapters, privilege activation and owned-task launches during verification. Current local results are 76 passed / 0 failed per configuration, separate from historical hosted evidence. Candidate Stage 1 used an audited lease-only bridge while all power-state/termination actions remained recorded. See [owner acceptance and candidate evidence](CORE_REVIEW_EVIDENCE.md); implemented functionality is distinct from universal hardware certification. Store packaging, releases and publication were not changed.
 
 The JSON parser uses the full-framework `System.Web.Extensions` assembly and stays within .NET Framework 4.0 APIs. Validation used newer installed 4.8 compiler/runtime with pinned 4.0 references; an original .NET 4.0 runtime, Client Profile-only installation and exhaustive Windows/architecture matrix were not tested. No compatibility certification follows from reference compilation alone.
 
-GO for recording-only review. Conditional GO for planning a controlled owner-operated hardware session; execution still requires separate authorization and the preconditions in [WINDOWS_ACCEPTANCE](WINDOWS_ACCEPTANCE.md). NO-GO for unattended production reliance, universal IDE-completion claims or publication as hardware-validated.
+GO for source PR preparation with scoped evidence. No new hosted result exists until a separately approved push. Candidate power-transition testing requires separate authorization and acceptance preconditions; unattended hardware certification and universal IDE-completion claims remain unsupported.
