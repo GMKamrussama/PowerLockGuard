@@ -1,10 +1,17 @@
 # PowerLockGuard v1.1.0 candidate
 
+PowerLockGuard provides independent Charger Disconnect Protection and work-aware power management with Windows SystemRequired support. [PR #3](https://github.com/GMKamrussama/PowerLockGuard/pull/3) presents the core restoration and review fixes, application source `8b7fdd41e6eaaf9de68080d9e4cfd6c7deecda1f`. Local Debug/Release each pass **103 tests / 0 failures**; solution builds, Build.bat and safe CLI pass. [TEST_RESULTS](docs/TEST_RESULTS.md) records exact build hashes, hosted results and hardware evidence. This PR does not publish a binary release or Microsoft Store update.
+
 Keeps .NET Framework 4.0 / WinForms and adds safety controls and recording-only demonstrations.
 
-Source status: [PR #1](https://github.com/GMKamrussama/PowerLockGuard/pull/1) merged into `master` at [70cd1b8ac8ad2441c6ac75b87124aac500ce3f36](https://github.com/GMKamrussama/PowerLockGuard/commit/70cd1b8ac8ad2441c6ac75b87124aac500ce3f36). [Post-merge Windows CI](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40509133147) passed 40 tests / 0 failures per Debug/Release configuration, both solution builds and Build.bat. A v1.1 binary release has not been published. Physical power behavior, physical sensors and Codex task completion remain unverified.
+Historical public source status: [PR #1](https://github.com/GMKamrussama/PowerLockGuard/pull/1) merged into `master` at [70cd1b8ac8ad2441c6ac75b87124aac500ce3f36](https://github.com/GMKamrussama/PowerLockGuard/commit/70cd1b8ac8ad2441c6ac75b87124aac500ce3f36). [Post-merge Windows CI](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40509133147) passed 40 tests / 0 failures per Debug/Release configuration, both solution builds and Build.bat. A v1.1 binary release has not been published. That historical automated run does not verify physical power, sensors or Codex completion; owner-tested original and candidate evidence are recorded separately above.
 
 ## Fixes
+
+- Both redirected-output drain workers are prepared before launching an owned child; setup failure aborts waiting workers before any child launch.
+
+- Live/owned-task invocations select the global live mutex solely from the validated top-level mode, never child arguments.
+- Codex pending-state storage has item-count, per-ID and cumulative ID budgets; invalidation clears state without treating a running process as completed.
 
 - CPU load no longer proves a stuck process or authorizes automatic termination. Legacy automatic-kill settings are disabled.
 - Countdown close defaults to cancellation; resumed activity, invalid samples and settings changes invalidate actions. Execution requires fresh observations.
@@ -38,4 +45,4 @@ Keep a backup of your old INI before upgrading; the legacy automatic-kill key is
 
 Start with `--dry-run` under `POWERLOCKGUARD_NO_NATIVE_ACTIONS=1`. Do not double-click an unflagged candidate for a safe demo. Manual termination and live power actions can interrupt useful or unsaved work even with these guards. Review any exported process/event log before sharing.
 
-Publication recommendation: label the first owner-approved candidate as a **pre-release**, since hardware power behavior, physical sensor integration and a broad OS matrix remain unverified. Local candidate binaries are unsigned. No tag, asset upload or release publication is authorized by preparing these notes.
+Publication recommendation: if separately authorized, label the newer candidate a **pre-release** because candidate-specific physical power/input acceptance and a broad OS matrix remain incomplete. Preserve original-build owner-tested success as separate evidence. Local candidate binaries are unsigned. No tag, asset upload or release publication is authorized by preparing these notes.

@@ -215,7 +215,7 @@ internal static class SafetyTests
             foreach (string value in new string[] { "WatchdogGraceMinutes=abc", "WatchdogGraceMinutes=-1", "WatchdogGraceMinutes=2147483648", "WatchdogIdleThreshold=NaN", "WatchdogIdleThreshold=Infinity", "CountdownSeconds=0", "CountdownSeconds=-5", "WatchdogAction=Typo", "WatchdogMode=Typo", "ChargerGuardEnabled=garbage" })
             {
                 string path = Path.Combine(output, "bad.ini"); File.WriteAllText(path, "WatchdogEnabled=True\nChargerGuardEnabled=True\n" + value);
-                var s = AppSettings.Load(path); Assert(!s.WatchdogEnabled && !s.ChargerGuardEnabled && s.Warnings.Count > 0, value);
+                var s = AppSettings.Load(path); Assert((value.StartsWith("Charger") ? s.WatchdogEnabled && !s.ChargerGuardEnabled : !s.WatchdogEnabled && s.ChargerGuardEnabled) && s.Warnings.Count > 0, value);
             }
         });
         Test("Config atomically round-trips and surfaces write failure", delegate {
@@ -276,15 +276,15 @@ internal static class SafetyTests
                 Assert(e.IsArmed && e.HasActiveWork, "late enable receives new synthetic activity");
             }
         });
-        Test("UI warning demo suppresses concurrent automatic charger requests", delegate {
+        Test("UI warning preview preserves genuine charger protection", delegate {
             var recording = new RecordingActionExecutor(); var c = new FakeClock(); var power = new ScriptedPower();
             using (var f = new MainForm(true, c, new ScriptedProcesses(), power, recording))
             using (var trigger = new Timer())
             {
                 f.Show(); ((AppSettings)Field(f, "settings")).CountdownSeconds = 1;
-                trigger.Interval = 100; trigger.Tick += delegate { c.Advance(0.5); power.State = ChargerState.Offline; Call(f, "PowerMonitorTimer_Tick", null, EventArgs.Empty); }; trigger.Start();
+                trigger.Interval = 100; trigger.Tick += delegate { power.State = ChargerState.Offline; Call(f, "PowerMonitorTimer_Tick", null, EventArgs.Empty); c.Advance(0.5); Call(f, "PowerMonitorTimer_Tick", null, EventArgs.Empty); }; trigger.Start();
                 Call(f, "TriggerCountdownAndAction", true); trigger.Stop();
-                Assert(recording.Requests.Count == 0 && !(bool)Field(f, "isCountdownActive"), "demo cannot dispatch live automatic actions");
+                Assert(recording.Requests.Count == 1 && recording.Requests[0].Origin == ActionOrigin.Charger && !(bool)Field(f, "isCountdownActive"), "genuine charger routed to fake adapter while preview cancelled");
             }
         });
         Test("UI running countdown cancels when activity returns", delegate {
@@ -357,6 +357,7 @@ internal static class SafetyTests
                 Assert(recording.Requests.Count == 1 && recording.Requests[0].Origin == ActionOrigin.Manual, "explicit approval is a simulated manual request");
             }
         });
+        FunctionalTests.Run(Test, Assert, output);
         report.Add("Passed: " + passed + "; Failed: " + failed + "; real power/kill calls: none by test design");
         File.WriteAllLines(Path.Combine(output, "test-results.txt"), report.ToArray());
         Console.WriteLine(report[report.Count - 1]);

@@ -37,11 +37,11 @@ try {
     # Boundary check: destructive APIs and shutdown executable belong only to the reviewed Windows adapter.
     foreach ($source in $sources) {
         if ((Split-Path -Leaf $source) -eq 'WindowsAdapters.cs') { continue }
-        if (Select-String -LiteralPath $source -Pattern '\.Kill\s*\(|SetSuspendState\s*\(|LockWorkStation\s*\(|shutdown\.exe' -Quiet) {
+        if (Select-String -LiteralPath $source -Pattern '\.Kill\s*\(|SetSuspendState\s*\(|LockWorkStation\s*\(|shutdown\.exe|Power(Create|Set|Clear)Request\s*\(|AdjustTokenPrivileges\s*\(' -Quiet) {
             throw "Native action escaped the Windows adapter: $source"
         }
     }
-    $references = @('mscorlib', 'System', 'System.Core', 'System.Drawing', 'System.Windows.Forms') | ForEach-Object { '/reference:' + (Join-Path $referenceDir ($_.ToString() + '.dll')) }
+    $references = @('mscorlib', 'System', 'System.Core', 'System.Drawing', 'System.Windows.Forms', 'System.Web.Extensions') | ForEach-Object { '/reference:' + (Join-Path $referenceDir ($_.ToString() + '.dll')) }
     foreach ($configuration in @('Debug', 'Release')) {
         $binaryDir = Join-Path $repo ('bin/Verification/' + $configuration)
         $resultsDir = Join-Path $artifacts $configuration
@@ -51,7 +51,8 @@ try {
         $optimization = if ($configuration -eq 'Release') { '/optimize+' } else { '/debug+' }
         & $compiler /nologo /noconfig /nostdlib+ /warn:4 /warnaserror+ $optimization /target:winexe "/win32icon:$repo/app.ico" "/out:$app" @references @sources
         if ($LASTEXITCODE -ne 0) { throw "$configuration application compilation failed." }
-        & $compiler /nologo /noconfig /nostdlib+ /warn:4 /warnaserror+ /target:exe "/out:$test" @references "/reference:$app" (Join-Path $repo 'tests/SafetyTests.cs')
+        $testSources = @(Get-ChildItem -LiteralPath (Join-Path $repo 'tests') -Filter '*.cs' | Sort-Object Name | ForEach-Object { $_.FullName })
+        & $compiler /nologo /noconfig /nostdlib+ /warn:4 /warnaserror+ /target:exe "/out:$test" @references "/reference:$app" @testSources
         if ($LASTEXITCODE -ne 0) { throw "$configuration test compilation failed." }
         & $test $resultsDir
         if ($LASTEXITCODE -ne 0) { throw "$configuration safety tests failed." }

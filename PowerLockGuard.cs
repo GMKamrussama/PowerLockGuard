@@ -27,6 +27,12 @@ namespace PowerLockGuard
     {
         private static System.Threading.Mutex singleInstanceMutex;
 
+        public static bool IsSimulationInvocation(string[] args)
+        { return args != null && args.Length == 1 && args[0] == "--dry-run"; }
+
+        public static string GetInstanceMutexName(bool simulation)
+        { return simulation ? "Local\\PowerLockGuard_SimulationMutex" : "Global\\PowerLockGuard_SingleInstanceMutex"; }
+
         [DllImport("user32.dll")]
         private static extern bool SetProcessDPIAware();
 
@@ -40,13 +46,15 @@ namespace PowerLockGuard
                 Environment.ExitCode = SimulationRunner.Run(args.Length > 1 ? args[1] : "all", args.Length > 2 ? args[2] : Path.Combine(Environment.CurrentDirectory, "artifacts", "simulation.log"));
                 return;
             }
-            if (args.Length > 0 && (args.Length != 1 || (args[0] != "--dry-run" && args[0] != "--capture-screenshots")))
+            bool ownedTask = args.Length >= 2 && (args[0] == "--watch-command" || args[0] == "--watch-codex");
+            if (!ownedTask && args.Length > 0 && (args.Length != 1 || (args[0] != "--dry-run" && args[0] != "--capture-screenshots")))
             {
-                Console.Error.WriteLine("Supported options: --dry-run, --simulate [all|watchdog|charger] [output-path], --capture-screenshots. Unknown options never start live mode.");
+                Console.Error.WriteLine("Supported options: --dry-run, --simulate [all|watchdog|charger] [output-path], --capture-screenshots, --watch-command executable [args...], --watch-codex executable [exec args...]. Unknown options never start live mode.");
                 Environment.ExitCode = 2;
                 return;
             }
-            bool simulation = args != null && Array.IndexOf(args, "--dry-run") >= 0;
+            // Validation above applies only to our top-level option, never child arguments.
+            bool simulation = IsSimulationInvocation(args);
             try
             {
                 if (Environment.OSVersion.Version.Major >= 6)
@@ -69,7 +77,7 @@ namespace PowerLockGuard
             }
 
             bool createdNew;
-            singleInstanceMutex = new System.Threading.Mutex(true, simulation ? "Local\\PowerLockGuard_SimulationMutex" : "Global\\PowerLockGuard_SingleInstanceMutex", out createdNew);
+            singleInstanceMutex = new System.Threading.Mutex(true, GetInstanceMutexName(simulation), out createdNew);
 
             if (!createdNew)
             {
@@ -81,7 +89,18 @@ namespace PowerLockGuard
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            try { using (MainForm form = new MainForm(simulation)) Application.Run(form); }
+            try
+            {
+                if (ownedTask)
+                {
+                    string[] taskArgs = new string[args.Length - 2]; Array.Copy(args, 2, taskArgs, 0, taskArgs.Length);
+                    // Explicit opt-in launch after single-instance acquisition. Never auto-attach to an IDE.
+                    using (var task = new OwnedTaskSession(args[1], taskArgs, args[0] == "--watch-codex"))
+                    using (var form = new MainForm(false, new MonotonicClock(), null, null, null, null, null, task)) Application.Run(form);
+                }
+                else using (MainForm form = new MainForm(simulation)) Application.Run(form);
+            }
+            catch (Exception ex) { Environment.ExitCode = 1; MessageBox.Show("Monitoring could not start: " + ex.Message, "PowerLockGuard"); }
             finally { singleInstanceMutex.ReleaseMutex(); singleInstanceMutex.Dispose(); }
         }
     }
@@ -317,7 +336,7 @@ namespace PowerLockGuard
 
             // Warning Icon & Header
             lblHeader = new Label();
-            lblHeader.Text = targetAction.StartsWith("SIMULATION") ? "SIMULATION: POWER ACTION PREVIEW" : "CPU INACTIVITY OBSERVED";
+            lblHeader.Text = targetAction.StartsWith("SIMULATION") ? "SIMULATION: POWER ACTION PREVIEW" : "POWER ACTION PENDING";
             lblHeader.Font = new Font("Segoe UI", 13f, FontStyle.Bold);
             lblHeader.ForeColor = Color.FromArgb(245, 158, 11); // Amber
             lblHeader.Location = new Point(25, 20);
@@ -326,7 +345,7 @@ namespace PowerLockGuard
             this.Controls.Add(lblHeader);
 
             lblAction = new Label();
-            lblAction.Text = targetAction.StartsWith("SIMULATION") ? "Preview only: no real power or process action will occur." : string.Format("CPU inactivity is a heuristic. Your PC will {0} shortly.", targetAction.ToUpper());
+            lblAction.Text = targetAction.StartsWith("SIMULATION") ? "Preview only. Enabled Charger Guard remains active independently." : string.Format("Workload and inactivity checks passed. Your PC will {0} shortly.", targetAction.ToUpper());
             lblAction.Font = new Font("Segoe UI", 9.5f, FontStyle.Regular);
             lblAction.ForeColor = Color.FromArgb(203, 213, 225);
             lblAction.Location = new Point(27, 52);
@@ -485,7 +504,6 @@ namespace PowerLockGuard
         private ComboBox cmbWatchdogGrace;
         private ComboBox cmbWatchdogThreshold;
         private TextBox txtCustomProcess;
-        private CheckBox chkAutoKillStuck;
         private Label lblWatchdogActivity;
         private Label lblWatchdogCpu;
         private Label lblWatchdogTimer;
@@ -512,6 +530,10 @@ namespace PowerLockGuard
         private readonly ChargerGuard chargerGuard;
         private readonly IPowerStatusSource powerSource;
         private readonly IUserActivitySource userActivity;
+        private readonly PowerActionArbiter powerArbiter;
+        private readonly WorkloadPolicy workload;
+        private readonly ITaskStatusSource taskSource;
+        private string chargerSettingsKey;
         private readonly DemoProcessSource demoProcesses;
         private Font processBoldFont;
         private SafetyCountdownForm activeCountdown;
@@ -522,7 +544,7 @@ namespace PowerLockGuard
 
         public MainForm() : this(false) { }
         public MainForm(bool simulation) : this(simulation, new MonotonicClock(), null, null, null) { }
-        public MainForm(bool simulation, IClock clock, IProcessSource processes, IPowerStatusSource power, IActionExecutor executor, IUserActivitySource userActivity = null)
+        public MainForm(bool simulation, IClock clock, IProcessSource processes, IPowerStatusSource power, IActionExecutor executor, IUserActivitySource userActivity = null, IKeepAwakeLease keepAwake = null, ITaskStatusSource tasks = null)
         {
             this.simulation = simulation;
             this.userActivity = userActivity ?? (simulation ? (IUserActivitySource)new SyntheticUserActivity() : new WindowsUserActivitySource());
@@ -530,9 +552,15 @@ namespace PowerLockGuard
             if (simulation && executor != null && !(executor is RecordingActionExecutor))
                 throw new ArgumentException("Simulation requires a recording executor");
             actions = new ActionDispatcher(executor ?? (simulation ? (IActionExecutor)new RecordingActionExecutor() : new WindowsActionExecutor()));
+            if (simulation && keepAwake != null && !(keepAwake is RecordingKeepAwakeLease)) throw new ArgumentException("Simulation requires a recording keep-awake lease");
+            powerArbiter = new PowerActionArbiter(actions, keepAwake ?? (simulation ? (IKeepAwakeLease)new RecordingKeepAwakeLease() : new SystemAwakeLease(new WindowsPowerRequestNative())), LogActivity);
             powerSource = power ?? (simulation ? (IPowerStatusSource)new DemoPowerSource() : new WindowsPowerStatusSource());
             chargerGuard = new ChargerGuard(clock);
             settings = simulation ? new AppSettings { Ephemeral = true, StartWithWindows = false, PlayAlertSound = false } : AppSettings.Load();
+            taskSource = tasks ?? new TaskRegistry();
+            workload = new WorkloadPolicy(clock, taskSource);
+            if (tasks is OwnedTaskSession) { settings.WatchdogEvidenceMode = "TaskAware"; settings.WatchdogEnabled = true; }
+            chargerSettingsKey = ChargerSettingsKey();
             IProcessSource processSource = processes ?? (simulation ? (IProcessSource)new DemoProcessSource(clock) : new WindowsProcessSource());
             demoProcesses = processSource as DemoProcessSource;
             watchdogEngine = new WorkWatchdogEngine(clock, processSource, simulation ? 4 : Environment.ProcessorCount);
@@ -540,7 +568,7 @@ namespace PowerLockGuard
             if (simulation) this.Text = "SIMULATION - no real actions - " + this.Text;
             InitializeTray();
             if (!simulation) UpdateStartupShortcut(settings.StartWithWindows);
-            chargerGuard.Observe(powerSource.Read(), settings.ChargerGuardEnabled);
+            chargerGuard.Observe(ReadPowerStatus(), settings.ChargerGuardEnabled, settings.ChargerDebounceMilliseconds);
             isInitialized = true;
             powerMonitorTimer = new Timer();
             powerMonitorTimer.Interval = 500;
@@ -557,17 +585,32 @@ namespace PowerLockGuard
 
         private ActionResult RequestAction(string action, ActionOrigin origin, ProcessIdentity target)
         {
-            ActionResult result = actions.Request(action, origin, target);
+            ActionResult result = powerArbiter.Request(action, origin, target, delegate { return WatchdogEligible(); });
             LogActivity(result.ToString());
+            if (!simulation && result.Status == ActionStatus.Failed && trayIcon != null)
+                trayIcon.ShowBalloonTip(5000, "PowerLockGuard action failed", result.Message, ToolTipIcon.Warning);
             return result;
         }
+        private string ChargerSettingsKey()
+        { return settings.ChargerGuardEnabled + "|" + settings.ChargerGuardAction + "|" + settings.ChargerDebounceMilliseconds; }
+        private ChargerState ReadPowerStatus()
+        { try { return powerSource.Read(); } catch (Exception ex) { LogActivity("Power telemetry unavailable: " + ex.GetType().Name); return ChargerState.Unknown; } }
         private void SaveSettings()
         {
             if (activeCountdown != null) activeCountdown.CancelPending();
             watchdogEngine.RestartMonitoring();
-            chargerGuard.Reset();
+            workload.Reset();
             int warningCount = settings.Warnings.Count;
             if (!settings.Save()) LogActivity("Settings were NOT saved: " + settings.LastError);
+            if (chargerSettingsKey != ChargerSettingsKey())
+            {
+                chargerGuard.Reset();
+                chargerGuard.Observe(ReadPowerStatus(), settings.ChargerGuardEnabled, settings.ChargerDebounceMilliseconds);
+                chargerSettingsKey = ChargerSettingsKey();
+            }
+            powerArbiter.Rearm();
+            workload.Refresh(settings, watchdogEngine);
+            powerArbiter.UpdateProtection(workload.Protect);
             for (int i = warningCount; i < settings.Warnings.Count; i++) LogActivity(settings.Warnings[i]);
             if (btnToggleCharger != null) UpdateChargerToggleUI();
             if (btnToggleWatchdog != null) UpdateWatchdogToggleUI();
@@ -580,16 +623,28 @@ namespace PowerLockGuard
             UpdateWatchdogToggleUI();
             LogActivity(enabled ? "Watchdog enabled; waiting for valid activity before arming." : "Watchdog paused.");
         }
-        private bool IsPowerPlugged() { return powerSource.Read() == ChargerState.Online; }
+        private bool IsPowerPlugged() { return ReadPowerStatus() == ChargerState.Online; }
+
+        private void HandleResume()
+        {
+            watchdogEngine.RestartMonitoring();
+            workload.Resume();
+            chargerGuard.Reset();
+            chargerGuard.Observe(ReadPowerStatus(), settings.ChargerGuardEnabled, settings.ChargerDebounceMilliseconds);
+            if (activeCountdown != null) activeCountdown.CancelPending();
+            powerArbiter.Resume();
+            workload.Refresh(settings, watchdogEngine);
+            powerArbiter.UpdateProtection(workload.Protect);
+            LogActivity("Resume: fresh CPU, task and AC state required; pending actions cancelled.");
+        }
 
         protected override void WndProc(ref Message m)
         {
             if (m.Msg == 0x0218 && (m.WParam.ToInt32() == 7 || m.WParam.ToInt32() == 18))
             {
-                if (watchdogEngine != null) watchdogEngine.RestartMonitoring();
-                if (chargerGuard != null) chargerGuard.Reset();
-                if (activeCountdown != null) activeCountdown.CancelPending();
+                if (isInitialized) HandleResume();
             }
+            if (isInitialized && m.Msg == 0x0218 && m.WParam.ToInt32() == 10) PowerMonitorTimer_Tick(this, EventArgs.Empty);
             base.WndProc(ref m);
         }
         protected override void Dispose(bool disposing)
@@ -597,6 +652,9 @@ namespace PowerLockGuard
             if (disposing)
             {
                 isInitialized = false;
+                if (powerArbiter != null) powerArbiter.Dispose();
+                IDisposable ownedTask = taskSource as IDisposable;
+                if (ownedTask != null) ownedTask.Dispose();
                 if (powerMonitorTimer != null) powerMonitorTimer.Dispose();
                 if (watchdogTimer != null) watchdogTimer.Dispose();
                 if (activeCountdown != null) activeCountdown.Dispose();
@@ -816,6 +874,13 @@ namespace PowerLockGuard
             lblNote.UseMnemonic = false;
             tabCharger.Controls.Add(lblNote);
 
+            var debounceLabel = new Label { Text = "Disconnect debounce (milliseconds):", Location = new Point(28, 335), Size = new Size(300, 24) };
+            tabCharger.Controls.Add(debounceLabel);
+            var debounce = new NumericUpDown { Minimum = 100, Maximum = 10000, Increment = 100, Value = settings.ChargerDebounceMilliseconds, Location = new Point(335, 332), Size = new Size(130, 26) };
+            debounce.ValueChanged += delegate { settings.ChargerDebounceMilliseconds = (int)debounce.Value; SaveSettings(); };
+            tabCharger.Controls.Add(debounce);
+            tabCharger.Controls.Add(new Label { Text = "Charger Guard acts independently of Watchdog and warning previews.\nPolling adds latency; standby availability depends on Windows and hardware.", Location = new Point(28, 375), Size = new Size(565, 55) });
+
             LinkLabel lnkAboutCharger = new LinkLabel();
             lnkAboutCharger.Text = "PowerLockGuard v1.1.0 • Developed by GMK Solution (gmksolution.com)";
             lnkAboutCharger.Location = new Point(25, 524);
@@ -861,7 +926,7 @@ namespace PowerLockGuard
 
             // Row 1: Action when work finishes
             Label lblAct = new Label();
-            lblAct.Text = "After CPU inactivity:";
+            lblAct.Text = "On eligible inactivity:";
             lblAct.Location = new Point(15, 24);
             lblAct.Size = new Size(160, 22);
             lblAct.UseMnemonic = false;
@@ -986,17 +1051,19 @@ namespace PowerLockGuard
             };
             grpConfig.Controls.Add(cmbWatchdogThreshold);
 
-            // Row 4: Auto-kill stuck runaway processes checkbox
-            chkAutoKillStuck = new CheckBox();
-            chkAutoKillStuck.Text = "Auto-kill disabled: high CPU does not prove a hang";
-            chkAutoKillStuck.Location = new Point(15, 154);
-            chkAutoKillStuck.Size = new Size(560, 24);
-            chkAutoKillStuck.Checked = false;
-            chkAutoKillStuck.Enabled = false;
-            chkAutoKillStuck.Font = new Font("Segoe UI", 9f, FontStyle.Regular);
-            chkAutoKillStuck.ForeColor = Color.FromArgb(30, 41, 59);
-            chkAutoKillStuck.Cursor = Cursors.Hand;
-            grpConfig.Controls.Add(chkAutoKillStuck);
+            var evidence = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Location = new Point(15, 154), Size = new Size(160, 24) };
+            evidence.Items.AddRange(new object[] { "CPU heuristic", "Registered tasks" });
+            evidence.SelectedIndex = settings.WatchdogEvidenceMode == "TaskAware" ? 1 : 0;
+            evidence.SelectedIndexChanged += delegate { settings.WatchdogEvidenceMode = evidence.SelectedIndex == 1 ? "TaskAware" : "Heuristic"; SaveSettings(); };
+            grpConfig.Controls.Add(evidence);
+            var awake = new CheckBox { Text = "Keep system awake", Checked = settings.KeepAwakeEnabled, Location = new Point(185, 154), Size = new Size(165, 24) };
+            awake.CheckedChanged += delegate { settings.KeepAwakeEnabled = awake.Checked; SaveSettings(); };
+            grpConfig.Controls.Add(awake);
+            var unknown = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Location = new Point(355, 154), Size = new Size(215, 24) };
+            unknown.Items.AddRange(new object[] { "Unknown: keep awake", "Unknown: release hold" });
+            unknown.SelectedIndex = settings.UnknownWorkPolicy == "ReleaseProtection" ? 1 : 0;
+            unknown.SelectedIndexChanged += delegate { settings.UnknownWorkPolicy = unknown.SelectedIndex == 1 ? "ReleaseProtection" : "HoldKnownWork"; SaveSettings(); };
+            grpConfig.Controls.Add(unknown);
 
             // Live Telemetry & Detailed Process Metrics Group
             GroupBox grpTelemetry = new GroupBox();
@@ -1325,13 +1392,13 @@ namespace PowerLockGuard
         {
             if (settings.WatchdogEnabled)
             {
-                btnToggleWatchdog.Text = "🤖 WORK WATCHDOG IS ACTIVE\n(Monitoring Tasks — Will " + settings.WatchdogAction + " after CPU inactivity)";
+                btnToggleWatchdog.Text = "🤖 WORK WATCHDOG IS ACTIVE\n(" + (settings.WatchdogEvidenceMode == "TaskAware" ? "Registered task completion" : "CPU heuristic") + " + inactivity: " + settings.WatchdogAction + ")";
                 btnToggleWatchdog.BackColor = Color.FromArgb(37, 99, 235); // Royal Blue
                 btnToggleWatchdog.ForeColor = Color.White;
             }
             else
             {
-                btnToggleWatchdog.Text = "▶️ ACTIVATE WORK WATCHDOG\n(Sleep / Shutdown after observed CPU inactivity)";
+                btnToggleWatchdog.Text = "▶️ ACTIVATE WORK WATCHDOG\n(Use selected work evidence and inactivity policy)";
                 btnToggleWatchdog.BackColor = Color.FromArgb(100, 116, 139); // Slate Gray
                 btnToggleWatchdog.ForeColor = Color.White;
             }
@@ -1344,13 +1411,11 @@ namespace PowerLockGuard
         private void PowerMonitorTimer_Tick(object sender, EventArgs e)
         {
             if (!isInitialized) return;
-            ChargerState state = powerSource.Read();
+            ChargerState state = ReadPowerStatus();
             lblChargerStatus.Text = "Charger: " + state.ToString().ToUpperInvariant() + (simulation ? " (SIMULATED)" : "");
             lblChargerStatus.ForeColor = state == ChargerState.Online ? Color.DarkGreen : state == ChargerState.Unknown ? Color.DarkOrange : Color.Firebrick;
-            lblChargerDescription.Text = settings.ChargerGuardEnabled ? "Confirmed unplug (500ms debounce) requests " + settings.ChargerGuardAction + ". Unknown readings never trigger." : "Charger protection paused.";
-            // The warning-demo pauses both live automatic action paths.
-            if (testCountdownActive) { chargerGuard.Reset(); return; }
-            if (chargerGuard.Observe(state, settings.ChargerGuardEnabled))
+            lblChargerDescription.Text = settings.ChargerGuardEnabled ? "Confirmed unplug (" + settings.ChargerDebounceMilliseconds + "ms debounce) requests " + settings.ChargerGuardAction + ". Unknown readings never trigger." : "Charger protection paused.";
+            if (chargerGuard.Observe(state, settings.ChargerGuardEnabled, settings.ChargerDebounceMilliseconds))
             {
                 if (activeCountdown != null) activeCountdown.CancelPending();
                 LogActivity("Confirmed charger disconnect; requesting " + settings.ChargerGuardAction);
@@ -1361,16 +1426,21 @@ namespace PowerLockGuard
         private bool WatchdogEligible()
         { return WatchdogCpuEligible() && UserActivityPolicy.IsIdle(userActivity, settings.WatchdogGraceMinutes * 60); }
         private bool WatchdogCpuEligible()
-        { return settings.WatchdogEnabled && watchdogEngine.CanAct(settings.WatchdogGraceMinutes * 60); }
+        { workload.Refresh(settings, watchdogEngine); return settings.WatchdogEnabled && workload.CoreEligible; }
 
         private void WatchdogTimer_Tick(object sender, EventArgs e)
         {
             if (!isInitialized) return;
             watchdogEngine.Poll(settings.WatchdogMode, settings.WatchdogTargetProcess, watchdogTimer.Interval, settings.WatchdogIdleThreshold);
+            workload.Refresh(settings, watchdogEngine);
+            powerArbiter.UpdateProtection(workload.Protect);
             if (!watchdogEngine.SampleHealthy && watchdogEngine.MonitoredProcessSummary != lastSampleProblem)
             { lastSampleProblem = watchdogEngine.MonitoredProcessSummary; LogActivity(lastSampleProblem); }
             if (watchdogEngine.SampleHealthy) lastSampleProblem = null;
             UpdateTelemetryUI();
+            lblWatchdogActivity.Text = workload.Observation.ToString();
+            lblWatchdogTimer.Text = workload.Summary;
+            if (workload.Protect) lblWatchdogTimer.Text = powerArbiter.ProtectionHeld ? "System-awake request held for monitored work." : "Keep-awake unavailable; inspect Settings & Logs.";
             if (WatchdogCpuEligible() && !UserActivityPolicy.IsIdle(userActivity, settings.WatchdogGraceMinutes * 60))
                 lblWatchdogTimer.Text = "Automatic action blocked: recent or unavailable keyboard/mouse activity.";
             if (!testCountdownActive && activeCountdown != null && !WatchdogEligible()) activeCountdown.CancelPending();
@@ -1673,7 +1743,7 @@ namespace PowerLockGuard
                 }
             }
             catch (Exception ex) { LogActivity("Countdown failed; no further action: " + ex.Message); watchdogEngine.RestartMonitoring(); }
-            finally { activeCountdown = null; testCountdownActive = false; isCountdownActive = false; chargerGuard.Reset(); }
+            finally { activeCountdown = null; testCountdownActive = false; isCountdownActive = false; }
         }
 
         private void ConfirmManualSleep()
@@ -1686,7 +1756,7 @@ namespace PowerLockGuard
         {
             try
             {
-                string entry = string.Format("[{0:HH:mm:ss}] {1}", DateTime.Now, message);
+                string entry = string.Format("[{0:yyyy-MM-ddTHH:mm:ss.fffZ}] {1}", DateTime.UtcNow, message);
                 if (lstActivityLog != null)
                 {
                     if (lstActivityLog.Items.Count >= 1000) lstActivityLog.Items.RemoveAt(0);
