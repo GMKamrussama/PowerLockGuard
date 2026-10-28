@@ -51,6 +51,7 @@ internal static class FunctionalTests
     private static AppSettings Settings() { return new AppSettings { Ephemeral = true, WatchdogEnabled = true, WatchdogEvidenceMode = "TaskAware", WatchdogGraceMinutes = 1, PlayAlertSound = false }; }
     public static void Run(Action<string, Action> test, Action<bool, string> check, string output)
     {
+        ChargerStateRegressionTests.Run(test, check);
         test("Bounded command outcomes distinguish running success failure and incomplete drain", delegate {
             check(FiniteTaskOutcome.Command(false, 0, false) == TaskState.Active, "running handle is authoritative activity");
             check(FiniteTaskOutcome.Command(true, 0, true) == TaskState.Completed, "finite command success only");
