@@ -27,6 +27,12 @@ namespace PowerLockGuard
     {
         private static System.Threading.Mutex singleInstanceMutex;
 
+        public static bool IsSimulationInvocation(string[] args)
+        { return args != null && args.Length == 1 && args[0] == "--dry-run"; }
+
+        public static string GetInstanceMutexName(bool simulation)
+        { return simulation ? "Local\\PowerLockGuard_SimulationMutex" : "Global\\PowerLockGuard_SingleInstanceMutex"; }
+
         [DllImport("user32.dll")]
         private static extern bool SetProcessDPIAware();
 
@@ -47,7 +53,8 @@ namespace PowerLockGuard
                 Environment.ExitCode = 2;
                 return;
             }
-            bool simulation = args != null && Array.IndexOf(args, "--dry-run") >= 0;
+            // Validation above applies only to our top-level option, never child arguments.
+            bool simulation = IsSimulationInvocation(args);
             try
             {
                 if (Environment.OSVersion.Version.Major >= 6)
@@ -70,7 +77,7 @@ namespace PowerLockGuard
             }
 
             bool createdNew;
-            singleInstanceMutex = new System.Threading.Mutex(true, simulation ? "Local\\PowerLockGuard_SimulationMutex" : "Global\\PowerLockGuard_SingleInstanceMutex", out createdNew);
+            singleInstanceMutex = new System.Threading.Mutex(true, GetInstanceMutexName(simulation), out createdNew);
 
             if (!createdNew)
             {
