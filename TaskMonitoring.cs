@@ -104,9 +104,21 @@ namespace PowerLockGuard
     // Retains event type/id/status only. Never logs or stores prompt/response/reasoning text.
     public sealed class CodexTurnTracker
     {
+        // Defensive budgets, not protocol guarantees: allow large opaque IDs and many
+        // concurrent items while retaining at most 128 KiB of UTF-16 ID payload.
+        // Count also bounds string/HashSet overhead; completed items return the budget.
+        public const int MaxPendingItems = 1024;
+        public const int MaxItemIdLength = 1024;
+        public const int MaxPendingIdCharacters = 65536;
         private bool started, completed, invalid, failed;
         private readonly HashSet<string> pending = new HashSet<string>();
+        private int pendingIdCharacters;
         public long Revision { get; private set; }
+        private void Invalidate()
+        {
+            invalid = true; completed = false;
+            pending.Clear(); pendingIdCharacters = 0; Revision++;
+        }
         public void Observe(string line)
         {
             if (invalid) return;
@@ -120,18 +132,27 @@ namespace PowerLockGuard
                 if (type == "turn.started") { if (started && !completed) throw new FormatException(); started = true; completed = false; Revision++; }
                 else if (type == "turn.completed") { if (!started || completed) throw new FormatException(); completed = true; Revision++; }
                 else if (type == "turn.failed") { failed = true; completed = false; Revision++; }
-                else if (type == "error") { invalid = true; Revision++; }
+                else if (type == "error") { Invalidate(); }
                 else if (type == "item.started" || type == "item.completed")
                 {
                     object raw; var item = value.TryGetValue("item", out raw) ? raw as Dictionary<string, object> : null;
                     if (item == null) throw new FormatException();
                     object identity; string id = item.TryGetValue("id", out identity) ? identity as string : null;
-                    if (string.IsNullOrEmpty(id)) throw new FormatException();
-                    if (type == "item.started") pending.Add(id); else pending.Remove(id);
+                    if (string.IsNullOrEmpty(id) || id.Length > MaxItemIdLength) throw new FormatException();
+                    if (type == "item.started")
+                    {
+                        if (!pending.Contains(id))
+                        {
+                            if (pending.Count >= MaxPendingItems || id.Length > MaxPendingIdCharacters - pendingIdCharacters)
+                                throw new FormatException();
+                            pending.Add(id); pendingIdCharacters += id.Length;
+                        }
+                    }
+                    else if (pending.Remove(id)) pendingIdCharacters -= id.Length;
                     Revision++;
                 }
             }
-            catch { invalid = true; completed = false; Revision++; }
+            catch { Invalidate(); }
         }
         public TaskState State(bool exited, int exitCode, bool outputDrained)
         {

@@ -53,6 +53,7 @@ internal static class FunctionalTests
     {
         ChargerStateRegressionTests.Run(test, check);
         InvocationModeRegressionTests.Run(test, check);
+        CodexBoundsRegressionTests.Run(test, check);
         test("Bounded command outcomes distinguish running success failure and incomplete drain", delegate {
             check(FiniteTaskOutcome.Command(false, 0, false) == TaskState.Active, "running handle is authoritative activity");
             check(FiniteTaskOutcome.Command(true, 0, true) == TaskState.Completed, "finite command success only");
