@@ -1,12 +1,15 @@
 # PowerLockGuard v1.1.0 candidate
 
-PowerLockGuard provides independent Charger Disconnect Protection and work-aware power management with Windows SystemRequired keep-awake support. Local application source `6568f0de4aa6981e2438a0528d83c0a3d6ab5288`, based on master `c827aa8`, adds suspend privileges/restoration, configurable charger debounce, feature-isolated validation, arbitration and bounded command/Codex lifecycle observations. Unknown/invalid charger enums now cancel confirmation and require fresh Online. **76 tests pass in each Debug/Release configuration**; solution builds, Build.bat and safe CLI pass. Original approved build: **OWNER-TESTED: SUCCESS** for charger/input/Sleep-Resume. New candidate: instrumented native keep-awake visibility/release and resumed-work cancellation passed. [Exact hashes and evidence](docs/CORE_REVIEW_EVIDENCE.md). No new hosted run, branch push, binary release or Store update occurred. Historical hosted 37/40-test evidence below predates this implementation; the local 66-test stage predates the defensive fix.
+PowerLockGuard provides independent Charger Disconnect Protection and work-aware power management with Windows SystemRequired support. [PR #3](https://github.com/GMKamrussama/PowerLockGuard/pull/3) presents the core restoration and review fixes, application source `688e24d19e2e683006033110d0adbef5ae2d4273`. Local Debug/Release each pass **97 tests / 0 failures**; solution builds, Build.bat and safe CLI pass. [TEST_RESULTS](docs/TEST_RESULTS.md) records exact build hashes, hosted results and hardware evidence. This PR does not publish a binary release or Microsoft Store update.
 
 Keeps .NET Framework 4.0 / WinForms and adds safety controls and recording-only demonstrations.
 
 Historical public source status: [PR #1](https://github.com/GMKamrussama/PowerLockGuard/pull/1) merged into `master` at [70cd1b8ac8ad2441c6ac75b87124aac500ce3f36](https://github.com/GMKamrussama/PowerLockGuard/commit/70cd1b8ac8ad2441c6ac75b87124aac500ce3f36). [Post-merge Windows CI](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40509133147) passed 40 tests / 0 failures per Debug/Release configuration, both solution builds and Build.bat. A v1.1 binary release has not been published. That historical automated run does not verify physical power, sensors or Codex completion; owner-tested original and candidate evidence are recorded separately above.
 
 ## Fixes
+
+- Live/owned-task invocations select the global live mutex solely from the validated top-level mode, never child arguments.
+- Codex pending-state storage has item-count, per-ID and cumulative ID budgets; invalidation clears state without treating a running process as completed.
 
 - CPU load no longer proves a stuck process or authorizes automatic termination. Legacy automatic-kill settings are disabled.
 - Countdown close defaults to cancellation; resumed activity, invalid samples and settings changes invalidate actions. Execution requires fresh observations.
