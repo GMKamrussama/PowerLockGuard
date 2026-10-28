@@ -165,11 +165,42 @@ namespace PowerLockGuard
             return started && completed && pending.Count == 0 ? TaskState.Completed : TaskState.Unknown;
         }
     }
+    // Prepare drain workers before launching a child. An aborted setup releases
+    // waiting workers without touching redirected streams or starting a process.
+    public sealed class OwnedTaskStartup
+    {
+        private readonly object gate = new object();
+        private bool started, ready, launched;
+        public bool AwaitLaunch()
+        {
+            lock (gate) { while (!ready) Monitor.Wait(gate); return launched; }
+        }
+        public void Run(Action prepareOutput, Action prepareError, Func<bool> launch)
+        {
+            lock (gate)
+            {
+                if (started) throw new InvalidOperationException("Task startup is single-use");
+                started = true;
+            }
+            bool success = false;
+            try
+            {
+                prepareOutput(); prepareError();
+                if (!launch()) throw new InvalidOperationException("Finite task did not start");
+                success = true;
+            }
+            finally
+            {
+                lock (gate) { launched = success; ready = true; Monitor.PulseAll(gate); }
+            }
+        }
+    }
     public sealed class OwnedTaskSession : ITaskStatusSource, IDisposable
     {
         private readonly object gate = new object();
         private readonly Process process;
         private readonly CodexTurnTracker codex;
+        private readonly OwnedTaskStartup startup = new OwnedTaskStartup();
         private bool outputDrained, errorDrained, streamFailed, invalidated, disposed;
         private TaskState last = TaskState.Unknown;
         private long generation;
@@ -187,18 +218,21 @@ namespace PowerLockGuard
                 UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
             try
             {
-                if (!process.Start()) throw new InvalidOperationException("Finite task did not start");
-                StartDrain(process.StandardOutput, true); StartDrain(process.StandardError, false);
+                startup.Run(delegate { StartDrain(true); }, delegate { StartDrain(false); }, delegate { return process.Start(); });
             }
             catch { process.Dispose(); throw; } // Never kill a child.
         }
-        private void StartDrain(StreamReader reader, bool stdout)
+        private void StartDrain(bool stdout)
         {
+            // Allocate buffers and start both threads before Process.Start can run.
+            var line = new StringBuilder(); char[] buffer = new char[4096];
             var thread = new Thread(delegate()
             {
-                var line = new StringBuilder(); char[] buffer = new char[4096];
+                StreamReader reader = null;
                 try
                 {
+                    if (!startup.AwaitLaunch()) return;
+                    reader = stdout ? process.StandardOutput : process.StandardError;
                     int count;
                     while ((count = reader.Read(buffer, 0, buffer.Length)) > 0)
                     {
@@ -216,7 +250,7 @@ namespace PowerLockGuard
                 catch { lock (gate) { streamFailed = true; } }
                 finally
                 {
-                    try { reader.Dispose(); } catch { lock (gate) { streamFailed = true; } }
+                    try { if (reader != null) reader.Dispose(); } catch { lock (gate) { streamFailed = true; } }
                     lock (gate)
                     {
                         if (stdout) outputDrained = true; else errorDrained = true;
