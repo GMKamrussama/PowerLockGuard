@@ -1,6 +1,6 @@
 # Owner laptop acceptance checklist and evidence status
 
-Updated 28 October 2026. Original approved binary: **OWNER-TESTED: SUCCESS** for charger, input cancellation and Sleep/Resume, explicitly confirmed by the owner. Those original behaviors are not NOT RUN; detailed timings/native traces were not collected. The 6568f0d candidate has instrumented E/F/G/H subsets plus injected C/telemetry evidence; the later 688e24d review-fix candidate has separate 97-test automated results. [Build identities and measurements](TEST_RESULTS.md).
+Updated 28 October 2026. Original approved binary: **OWNER-TESTED: SUCCESS** for charger, input cancellation and Sleep/Resume, explicitly confirmed by the owner. Those original behaviors are not NOT RUN; detailed timings/native traces were not collected. The 6568f0d candidate has instrumented E/F/G/H subsets plus injected C/telemetry evidence; the later 8b7fdd4 startup-corrected candidate has separate 103-test automated results. [Build identities and measurements](TEST_RESULTS.md).
 
 The original scenario IDs A-H below remain unchanged. Keep owner acceptance, candidate instrumented subsets and future physical testing distinct.
 

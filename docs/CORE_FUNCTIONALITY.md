@@ -1,6 +1,6 @@
 # Charger Guard, Work Watchdog and Windows keep-awake
 
-PowerLockGuard provides independent charger-disconnect protection and work-aware power management. Current application source `688e24d19e2e683006033110d0adbef5ae2d4273` is reviewed in [PR #3](https://github.com/GMKamrussama/PowerLockGuard/pull/3), based on public master `c827aa8196ab3e4e086ffc27a62e6b3746782fe5`. [TEST_RESULTS](TEST_RESULTS.md) holds build identities, current local results, hosted history and owner/candidate evidence; [WINDOWS_ACCEPTANCE](WINDOWS_ACCEPTANCE.md) retains the hardware checklist.
+PowerLockGuard provides independent charger-disconnect protection and work-aware power management. Current application source `8b7fdd41e6eaaf9de68080d9e4cfd6c7deecda1f` is reviewed in [PR #3](https://github.com/GMKamrussama/PowerLockGuard/pull/3), based on public master `c827aa8196ab3e4e086ffc27a62e6b3746782fe5`. [TEST_RESULTS](TEST_RESULTS.md) holds build identities, current local results, hosted history and owner/candidate evidence; [WINDOWS_ACCEPTANCE](WINDOWS_ACCEPTANCE.md) retains the hardware checklist.
 
 ## Audit findings and changes
 
@@ -42,6 +42,8 @@ The protocol follows documented [Codex noninteractive JSON events](https://devel
 
 `--watch-command <absolute-native-exe-path> [arguments...]` launches one explicit finite command. `--watch-codex <absolute-codex-exe-path> [exec-arguments...]` prepends `exec --json`. These are **live opt-in launch paths**, not simulation flags; they select registered-task monitoring and enable Watchdog. Later settings saves persist the usual INI values. Review Charger Guard and action/grace settings before using them. Native `.exe` paths are required; npm `.cmd` wrappers are not supported. Existing single-instance protection prevents a second launch; use a separate application run for another finite task. The in-memory registry supports multiple registered tasks for policy tests; there is no universal IDE task registration service or multi-session UI.
 
+Both drain workers and their buffers are prepared before launching an owned child. A setup failure releases waiting workers without launching or touching child streams; a successful launch releases both readers. This avoids leaving a child unmonitored if drain setup fails.
+
 Arguments are Windows-quoted, not shell-concatenated. No network interception, credential reading, session-file scraping or raw conversation logging is added. JSON line parsing is bounded at 262,144 characters; stderr/ordinary command output is discarded. Only lifecycle metadata survives parsing. Readers keep draining when monitoring is disposed so a running child is not deliberately interrupted by closing its pipes; monitoring never kills it. Exiting the application ends protection and OS process/pipe behavior is not a guarantee that every descendant continues. A descendant retaining inherited pipes can keep status Unknown until EOF; choose the unknown policy consciously. Interactive terminal programs and arbitrary shell sessions are outside this finite-command contract.
 
 ## Settings and recovery
@@ -59,7 +61,7 @@ Resume invalidates completed task evidence, resets CPU baselines, refreshes AC s
 
 ## Validation boundary
 
-All automated action paths use recording/fake adapters with `POWERLOCKGUARD_NO_NATIVE_ACTIONS=1`. It also blocks real lease adapters, privilege activation and owned-task launches during verification. Current local results are 97 passed / 0 failed per configuration, separate from historical hosted evidence. Stage 1 for source 6568f0d used an audited lease-only bridge while all power-state/termination actions remained recorded. See [owner acceptance and candidate evidence](TEST_RESULTS.md); implemented functionality is distinct from universal hardware certification. Store packaging, releases and publication were not changed.
+All automated action paths use recording/fake adapters with `POWERLOCKGUARD_NO_NATIVE_ACTIONS=1`. It also blocks real lease adapters, privilege activation and owned-task launches during verification. Current local results are 103 passed / 0 failed per configuration, separate from historical hosted evidence. Stage 1 for source 6568f0d used an audited lease-only bridge while all power-state/termination actions remained recorded. See [owner acceptance and candidate evidence](TEST_RESULTS.md); implemented functionality is distinct from universal hardware certification. Store packaging, releases and publication were not changed.
 
 The JSON parser uses the full-framework `System.Web.Extensions` assembly and stays within .NET Framework 4.0 APIs. Validation used newer installed 4.8 compiler/runtime with pinned 4.0 references; an original .NET 4.0 runtime, Client Profile-only installation and exhaustive Windows/architecture matrix were not tested. No compatibility certification follows from reference compilation alone.
 

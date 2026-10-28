@@ -60,7 +60,7 @@ Windows determines supported sleep states and policy overrides. Native errors ar
 
 ## Verification and technical documentation
 
-Application source `688e24d` passed **97 local tests in Debug and 97 in Release**, plus both solution builds, Build.bat and safe CLI. Current hosted results and fresh review belong to the exact head shown in [PR #3 checks](https://github.com/GMKamrussama/PowerLockGuard/pull/3/checks). [TEST_RESULTS](docs/TEST_RESULTS.md) is the canonical record for hashes, historical hosted runs, Stage 1 measurements and validation limits.
+Application source `8b7fdd4` passed **103 local tests in Debug and 103 in Release**, plus both solution builds, Build.bat and safe CLI. Current hosted results and fresh review belong to the exact head shown in [PR #3 checks](https://github.com/GMKamrussama/PowerLockGuard/pull/3/checks). [TEST_RESULTS](docs/TEST_RESULTS.md) is the canonical record for hashes, historical hosted runs, Stage 1 measurements and validation limits.
 
 To verify safely in a disposable checkout with MSBuild on PATH:
 
@@ -82,4 +82,4 @@ Earlier [watchdog](docs/screenshots/01_work_watchdog.png) and [charger](docs/scr
 
 PowerLockGuard-এর দুটি মূল কাজ: charger খুললে নির্বাচিত protection action, এবং developer কাজ চলাকালে system keep-awake ও inactivity/grace শেষে cancellable power action। CPU কম হলেই AI কাজ শেষ—এমন দাবি নেই; auto-kill বন্ধ। নিরাপদ প্রদর্শনে `--dry-run` ব্যবহার করুন। Enabled Charger Guard live warning preview-এর সময়ও স্বাধীনভাবে কাজ করে।
 
-আগের approved build মালিক নিজে পরীক্ষা করেছেন: **OWNER-TESTED: SUCCESS**। বর্তমান application source `688e24d`-এ দুই review fix-সহ স্থানীয় Debug/Release প্রতিটিতে **৯৭টি পাস, ০ ব্যর্থ**। Hosted ও physical evidence নির্দিষ্ট commit/hash অনুসারে [validation record](docs/TEST_RESULTS.md)-এ আছে। মূল সংস্করণ Antigravity-এর সহায়তায় তৈরি, পরের audit/refinement/tests-এ Codex ব্যবহৃত হয়েছে।
+আগের approved build মালিক নিজে পরীক্ষা করেছেন: **OWNER-TESTED: SUCCESS**। বর্তমান application source `8b7fdd4`-এ review fixes-সহ স্থানীয় Debug/Release প্রতিটিতে **১০৩টি পাস, ০ ব্যর্থ**। Hosted ও physical evidence নির্দিষ্ট commit/hash অনুসারে [validation record](docs/TEST_RESULTS.md)-এ আছে। মূল সংস্করণ Antigravity-এর সহায়তায় তৈরি, পরের audit/refinement/tests-এ Codex ব্যবহৃত হয়েছে।

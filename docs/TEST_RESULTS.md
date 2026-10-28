@@ -2,29 +2,30 @@
 
 ## Current implementation and local verification
 
-[PR #3](https://github.com/GMKamrussama/PowerLockGuard/pull/3) contains the core restoration and the two review corrections. Application/test/build source: `688e24d19e2e683006033110d0adbef5ae2d4273`. Documentation-only follow-ups preserve those code inputs.
+[PR #3](https://github.com/GMKamrussama/PowerLockGuard/pull/3) contains the core restoration and the two review corrections. Application/test/build source: `8b7fdd41e6eaaf9de68080d9e4cfd6c7deecda1f`. Documentation-only follow-ups preserve those code inputs.
 
 | Local gate, 28 October 2026 | Actual result |
 |---|---|
-| Debug regression suite | **97 passed / 0 failed** |
-| Release regression suite | **97 passed / 0 failed** |
+| Debug regression suite | **103 passed / 0 failed** |
+| Release regression suite | **103 passed / 0 failed** |
 | Debug / Release solution rebuilds | Both passed, zero warnings/errors |
 | Unmodified Build.bat in isolated source root | Passed |
 | Debug / Release CLI simulation | Passed; native actions invoked: 0 |
 
-All 76 previous cases remain; seven invocation/mutex and fourteen parser-bound cases were added. Commit `b9ca23b0c90bbb9716f9fff85ab34dd67d4dbb35` derives simulation/mutex mode solely from the validated top-level option; child `--dry-run` cannot select the simulation mutex for live work. Commit `688e24d` bounds pending items/ID storage before insertion, clears invalid state and preserves running-process protection. These address the two P2 findings on earlier review head `509fef9`; review status for later heads is recorded on the PR, not inferred from local tests.
+All 97 previous cases remain. The original review follow-up added seven invocation/mutex and fourteen parser-bound cases to 76; six further partial-startup cases now cover drain preparation before launch, first/second worker failure, launch failure, successful release and single-use startup. Commit `b9ca23b0c90bbb9716f9fff85ab34dd67d4dbb35` derives simulation/mutex mode solely from the validated top-level option; child `--dry-run` cannot select the simulation mutex for live work. Commit `688e24d` bounds pending items/ID storage before insertion, clears invalid state and preserves running-process protection. These address the two P2 findings on earlier review head `509fef9`. A later review of `0f71d8b` confirmed a third P2: child launch preceded drain setup, so setup failure could leave unmonitored work. Source `8b7fdd4` prepares both workers before launch and aborts waiting readers on setup failure; review status for later heads is recorded on the PR, not inferred from local tests.
 
-An initial new-fixture run had Debug 96 passes and one failure: an invalid overlapping restart was expected to remain Failed, while existing fail-safe semantics return Unknown. The corrected test verifies both stages and still rejects completion. The final complete rerun passed. No application behavior was weakened for that fixture.
+During the 97-test stage, an initial new-fixture run had Debug 96 passes and one failure: an invalid overlapping restart was expected to remain Failed, while existing fail-safe semantics return Unknown. The corrected test verifies both stages and still rejects completion. The 97-test rerun passed; the later startup-corrected complete run passed all 103 cases without failures. No application behavior was weakened for that fixture.
 
-Tests ran against an isolated source export with the native-action interlock enabled. All exported tracked files matched `688e24d` by Git blob hash. Markdown cleanup does not justify rerunning unchanged local tests. The 40-test public baseline became 66 at `4fc957f`, 76 at `6568f0d`, then 97 at `688e24d`; test-case totals are not coverage percentages.
+Tests ran against an isolated source export with the native-action interlock enabled. All exported tracked files matched `8b7fdd4` by Git blob hash. Markdown cleanup does not justify rerunning unchanged local tests. The 40-test public baseline became 66 at `4fc957f`, 76 at `6568f0d`, then 97 at `688e24d`, and 103 at `8b7fdd4`; test-case totals are not coverage percentages.
 
 ## Hosted CI: commit-specific records
 
 | Hosted source | Push run | PR run | Verified reports |
 |---|---|---|---|
 | `509fef9ba506230a6ec40e1b49b07a92be8ead33` | [40633600394](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40633600394) | [40633608731](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40633608731) | Each run: Debug 76/0 and Release 76/0; both solution builds, Build.bat and CLI passed |
+| `0f71d8bd20227496b5658d9229141a12a77d1c3e` | [40640053876](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40640053876) | [40640058822](https://github.com/GMKamrussama/PowerLockGuard/actions/runs/40640058822) | Each run: Debug 97/0 and Release 97/0; both solution builds, Build.bat and CLI passed |
 
-Downloaded artifacts from both runs were inspected, including exactly 76 PASS entries per configuration. These are historical results for the pre-correction head, not hosted proof of the 97-test implementation. Consult [PR #3 checks](https://github.com/GMKamrussama/PowerLockGuard/pull/3/checks) and [Windows workflow runs](https://github.com/GMKamrussama/PowerLockGuard/actions/workflows/windows-safety.yml) for the current published head; attach any later result to its exact SHA and artifact reports before claiming it passed.
+Downloaded artifacts were inspected: each 509fef9 run has exactly 76 PASS entries per configuration; each 0f71d8b run has exactly 97. These results belong to their source heads, not hosted proof of the later 103-test startup correction. Consult [PR #3 checks](https://github.com/GMKamrussama/PowerLockGuard/pull/3/checks) and [Windows workflow runs](https://github.com/GMKamrussama/PowerLockGuard/actions/workflows/windows-safety.yml) for the current published head; attach any later result to its exact SHA and artifact reports before claiming it passed.
 
 ## Build identities and owner acceptance
 
@@ -41,6 +42,8 @@ Both binaries remain separate and unchanged. The approved original was not execu
 | Separate local Release build | `688e24d19e2e683006033110d0adbef5ae2d4273` | `9F52E38319DCC8C41D6F6E193954B0A69FBE14599709332C0B735ADF0F873BFA` | 97 local tests per configuration; no new physical power-transition claim |
 
 On 28 October 2026, the 6568f0d defensive candidate also passed 76 local tests in each Debug/Release configuration, both solution rebuilds with zero warnings/errors, isolated unmodified Build.bat, and Debug/Release plus copied-candidate CLI simulation (native actions 0). Its isolated tracked source export matched 6568f0d by Git blob hash. These earlier local results remain separate from the 509fef9 hosted runs and the current 688e24d local results.
+
+The separately built startup-corrected Release executable from `8b7fdd41e6eaaf9de68080d9e4cfd6c7deecda1f` has SHA256 `3190359BDAAEC5C4115C363D2FB0181FEFE8C8773E28B97EC4B9715F0E603DA5`. It passed the 103-test automated verification and does not replace either preserved candidate or establish new physical acceptance.
 
 The 6568f0d stage added ten charger regressions: valid Online/Offline transitions, Unknown/-1/99, lost telemetry during debounce, recovery, repeated events, exact thresholds and UI recording dispatch. The newer review fixes leave that charger/native policy unchanged; they do not transfer physical acceptance automatically between hashes.
 
